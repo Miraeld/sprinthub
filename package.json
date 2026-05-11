@@ -7,11 +7,11 @@
   "icon": "resources/sprinthub-icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gaelrobin/sprinthub"
+    "url": "https://github.com/Miraeld/sprinthub"
   },
-  "homepage": "https://github.com/gaelrobin/sprinthub#readme",
+  "homepage": "https://github.com/Miraeld/sprinthub#readme",
   "bugs": {
-    "url": "https://github.com/gaelrobin/sprinthub/issues"
+    "url": "https://github.com/Miraeld/sprinthub/issues"
   },
   "keywords": [
     "github",
