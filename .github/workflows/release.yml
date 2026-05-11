@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    branches: [trunk]
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Package extension
+        run: npx @vscode/vsce package
+
+      - name: Get version
+        id: pkg
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.pkg.outputs.version }}
+          name: SprintHub v${{ steps.pkg.outputs.version }}
+          files: "*.vsix"
+          generate_release_notes: true
+          make_latest: true
+
+      # To also publish to the VS Code Marketplace automatically, add a
+      # VSCE_PAT secret to the repo and uncomment the step below:
+      #
+      # - name: Publish to Marketplace
+      #   run: npx @vscode/vsce publish --pat ${{ secrets.VSCE_PAT }}

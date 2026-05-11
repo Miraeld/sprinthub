@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Dark deep background -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d0d1a"/>
+      <stop offset="100%" stop-color="#1a1030"/>
+    </linearGradient>
+
+    <!-- Glow blobs behind nodes -->
+    <radialGradient id="glowCenter" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowTop" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#c084fc" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowRight" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBL" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f472b6" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#f472b6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBR" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Glass fill for nodes -->
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.22)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.04)"/>
+    </linearGradient>
+    <!-- Glass fill for center (slightly more opaque) -->
+    <linearGradient id="glassCenter" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.18)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.05)"/>
+    </linearGradient>
+
+    <!-- Inner highlight on top-left of each sphere -->
+    <radialGradient id="hl" cx="32%" cy="28%" r="50%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.5)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+
+    <!-- Blur filter for glow blobs -->
+    <filter id="blurGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+    <filter id="blurGlowSm" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- ── GLOW BLOBS (blurred, behind everything) ── -->
+  <circle cx="256" cy="262" r="110" fill="url(#glowCenter)" filter="url(#blurGlow)"/>
+  <circle cx="194" cy="96"  r="65"  fill="url(#glowTop)"    filter="url(#blurGlowSm)"/>
+  <circle cx="400" cy="186" r="58"  fill="url(#glowRight)"  filter="url(#blurGlowSm)"/>
+  <circle cx="108" cy="398" r="58"  fill="url(#glowBL)"     filter="url(#blurGlowSm)"/>
+  <circle cx="394" cy="400" r="58"  fill="url(#glowBR)"     filter="url(#blurGlowSm)"/>
+
+  <!-- ── CONNECTOR LINES ── -->
+  <!-- Center→Top -->
+  <line x1="228" y1="166" x2="200" y2="112"
+        stroke="rgba(255,255,255,0.18)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Center→Right -->
+  <line x1="330" y1="224" x2="368" y2="196"
+        stroke="rgba(255,255,255,0.18)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Center→Bottom-Left -->
+  <line x1="208" y1="328" x2="154" y2="368"
+        stroke="rgba(255,255,255,0.18)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Center→Bottom-Right -->
+  <line x1="314" y1="326" x2="362" y2="362"
+        stroke="rgba(255,255,255,0.18)" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- ── SATELLITE NODES ── -->
+  <!-- Glass disc + border + highlight -->
+
+  <!-- Top -->
+  <circle cx="190" cy="88" r="52" fill="url(#glass)"/>
+  <circle cx="190" cy="88" r="52" fill="url(#hl)"/>
+  <circle cx="190" cy="88" r="52" fill="none"
+          stroke="rgba(255,255,255,0.28)" stroke-width="1.2"/>
+  <!-- coloured dot inside -->
+  <circle cx="190" cy="88" r="16" fill="#c084fc" opacity="0.9"/>
+  <circle cx="183" cy="81" r="5" fill="white" opacity="0.55"/>
+
+  <!-- Right -->
+  <circle cx="402" cy="182" r="48" fill="url(#glass)"/>
+  <circle cx="402" cy="182" r="48" fill="url(#hl)"/>
+  <circle cx="402" cy="182" r="48" fill="none"
+          stroke="rgba(255,255,255,0.28)" stroke-width="1.2"/>
+  <circle cx="402" cy="182" r="15" fill="#38bdf8" opacity="0.9"/>
+  <circle cx="395" cy="175" r="5" fill="white" opacity="0.55"/>
+
+  <!-- Bottom-Left -->
+  <circle cx="104" cy="398" r="48" fill="url(#glass)"/>
+  <circle cx="104" cy="398" r="48" fill="url(#hl)"/>
+  <circle cx="104" cy="398" r="48" fill="none"
+          stroke="rgba(255,255,255,0.28)" stroke-width="1.2"/>
+  <circle cx="104" cy="398" r="15" fill="#f472b6" opacity="0.9"/>
+  <circle cx="97"  cy="391" r="5" fill="white" opacity="0.55"/>
+
+  <!-- Bottom-Right -->
+  <circle cx="396" cy="400" r="48" fill="url(#glass)"/>
+  <circle cx="396" cy="400" r="48" fill="url(#hl)"/>
+  <circle cx="396" cy="400" r="48" fill="none"
+          stroke="rgba(255,255,255,0.28)" stroke-width="1.2"/>
+  <circle cx="396" cy="400" r="15" fill="#34d399" opacity="0.9"/>
+  <circle cx="389" cy="393" r="5" fill="white" opacity="0.55"/>
+
+  <!-- ── CENTRAL NODE ── -->
+  <circle cx="256" cy="262" r="106" fill="url(#glassCenter)"/>
+  <circle cx="256" cy="262" r="106" fill="url(#hl)"/>
+  <!-- subtle inner glow ring -->
+  <circle cx="256" cy="262" r="106" fill="none"
+          stroke="rgba(255,255,255,0.32)" stroke-width="1.5"/>
+  <!-- Central accent dot -->
+  <circle cx="256" cy="262" r="30" fill="rgba(255,255,255,0.12)"/>
+  <circle cx="256" cy="262" r="18" fill="rgba(255,255,255,0.18)"/>
+  <!-- Hub icon: small connection lines inside central sphere -->
+  <line x1="256" y1="244" x2="256" y2="262" stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="256" y1="262" x2="270" y2="272" stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="256" y1="262" x2="242" y2="272" stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="256" cy="262" r="4.5" fill="white"/>
+  <circle cx="256" cy="243" r="3" fill="rgba(255,255,255,0.8)"/>
+  <circle cx="271" cy="273" r="3" fill="rgba(255,255,255,0.8)"/>
+  <circle cx="241" cy="273" r="3" fill="rgba(255,255,255,0.8)"/>
+
+  <!-- Top-left glass shine -->
+  <ellipse cx="222" cy="222" rx="42" ry="28"
+           fill="rgba(255,255,255,0.07)" transform="rotate(-35,222,222)"/>
+</svg>

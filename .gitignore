@@ -1,0 +1,18 @@
+node_modules/
+out/
+*.vsix
+.claude/
+
+# VS Code test output
+.vscode-test/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+
+# AI rules not meant for the repo
+.github/instructions/codacy.instructions.md

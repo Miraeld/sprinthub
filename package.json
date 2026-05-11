@@ -1,0 +1,153 @@
+{
+  "name": "sprinthub",
+  "displayName": "SprintHub",
+  "description": "GitHub Projects v2 dashboard inside VS Code — sprint board, PR status, CI checks, and team hub",
+  "version": "0.1.0",
+  "publisher": "miraeld",
+  "icon": "resources/sprinthub-icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gaelrobin/sprinthub"
+  },
+  "homepage": "https://github.com/gaelrobin/sprinthub#readme",
+  "bugs": {
+    "url": "https://github.com/gaelrobin/sprinthub/issues"
+  },
+  "keywords": [
+    "github",
+    "project",
+    "board",
+    "sprint",
+    "kanban",
+    "dashboard",
+    "hub",
+    "pull-request",
+    "ci",
+    "workflow",
+    "scrum",
+    "agile"
+  ],
+  "categories": [
+    "Other",
+    "Visualization",
+    "SCM Providers"
+  ],
+  "engines": { "vscode": "^1.85.0" },
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sprinthub.open",
+        "title": "Open SprintHub",
+        "category": "SprintHub",
+        "icon": "$(project)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sprinthub-container",
+          "title": "SprintHub — GitHub Projects",
+          "icon": "resources/sprinthub-mono.svg"
+        }
+      ]
+    },
+    "views": {
+      "sprinthub-container": [
+        {
+          "id": "sprinthub.sidebar",
+          "name": "SprintHub",
+          "type": "tree"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sprinthub.sidebar",
+        "contents": "Your GitHub sprint board & PR hub, right inside VS Code.\n[$(project) Open SprintHub](command:sprinthub.open)\n\nFirst time? Click the ⚙️ icon after opening to configure your project."
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "sprinthub.open",
+          "when": "view == sprinthub.sidebar",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "SprintHub",
+      "properties": {
+        "sprinthub.owner": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub organization or user login that owns the project"
+        },
+        "sprinthub.projectNumber": {
+          "type": "number",
+          "default": 0,
+          "description": "GitHub Project (v2) number"
+        },
+        "sprinthub.ownerType": {
+          "type": "string",
+          "enum": ["organization", "user"],
+          "default": "organization",
+          "description": "Whether the owner is an organization or a user"
+        },
+        "sprinthub.statusFieldName": {
+          "type": "string",
+          "default": "Status",
+          "description": "Name of the single-select field in the GitHub Project that represents the column/status"
+        },
+        "sprinthub.refreshInterval": {
+          "type": "number",
+          "default": 5,
+          "description": "Auto-refresh interval in minutes (0 to disable)"
+        },
+        "sprinthub.liquidGlass": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable frosted-glass / translucent UI style"
+        },
+        "sprinthub.theme": {
+          "type": "string",
+          "enum": ["dark", "light"],
+          "default": "dark",
+          "description": "UI theme: dark or light"
+        },
+        "sprinthub.colorBlind": {
+          "type": "boolean",
+          "default": false,
+          "description": "Color-blind friendly mode: replaces red/green with orange/blue for CI and review status"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "vscode:prepublish": "node esbuild.js --production",
+    "lint": "eslint src webview-ui --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.0.0",
+    "eslint-plugin-react-hooks": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}
