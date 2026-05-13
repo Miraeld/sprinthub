@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { BoardItem, ExtensionMessage, LinkedPR, RunwayConfig, RunwayData } from '../src/types';
+import { BoardItem, ConflictThreat, ExtensionMessage, GHLabel, LinkedPR, PRFile, RunwayConfig, RunwayData } from '../src/types';
 import { ColumnGroup } from './components/ColumnGroup';
 import { DetailPanel } from './components/DetailPanel';
 import { LaunchpadView } from './components/LaunchpadView';
@@ -588,14 +588,16 @@ const STYLES = `
   .detail-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.35);
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(6px) saturate(160%);
+    -webkit-backdrop-filter: blur(6px) saturate(160%);
     z-index: 200;
     display: flex;
     justify-content: flex-end;
   }
 
   .detail-panel {
-    width: 420px;
+    width: 520px;
     max-width: 90vw;
     height: 100%;
     background: #16162a;
@@ -603,6 +605,7 @@ const STYLES = `
     display: flex;
     flex-direction: column;
     animation: slideInRight 0.2s ease;
+    box-shadow: -8px 0 40px rgba(0,0,0,0.4);
   }
 
   @keyframes slideInRight {
@@ -1131,7 +1134,7 @@ const STYLES = `
 
   /* ─── Launchpad view ──────────────────────── */
   .lp-wrap {
-    padding: 8px 0 16px;
+    padding: 8px 12px 16px;
     overflow-x: auto;
     min-width: 0;
   }
@@ -1140,7 +1143,7 @@ const STYLES = `
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 12px 10px;
+    padding: 4px 0 10px;
     flex-wrap: wrap;
   }
 
@@ -1194,7 +1197,7 @@ const STYLES = `
     grid-template-columns: 36px 52px 1fr 80px 30px 80px 140px;
     gap: 4px;
     align-items: center;
-    padding: 0 12px 6px;
+    padding: 0 0 6px;
     border-bottom: 1px solid #2a2a3d;
     color: #45475a;
     font-size: 10px;
@@ -1203,8 +1206,21 @@ const STYLES = `
     letter-spacing: 0.04em;
   }
 
+  /* Clip header label text so it doesn't overflow into the next column */
+  .lp-col-age, .lp-col-status, .lp-col-title,
+  .lp-col-diff, .lp-col-author, .lp-col-collabs, .lp-col-branch {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: clip;
+    min-width: 0;
+  }
+  .lp-col-age { text-align: right; }
+
   .lp-group {
-    margin-bottom: 2px;
+    border: 1px solid #2a2a3d;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
   }
 
   .lp-group-header {
@@ -1235,9 +1251,7 @@ const STYLES = `
     flex: 1;
   }
 
-  .lp-group-rows {
-    border-bottom: 1px solid #2a2a3d;
-  }
+  .lp-group-rows {}
 
   .lp-row {
     display: grid;
@@ -1407,6 +1421,311 @@ const STYLES = `
     font-size: 13px;
   }
 
+  /* ── Phase 1: PR Files ───────────────────────── */
+  .pr-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 4px;
+  }
+  .pr-file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .pr-file-row:hover { background: #1e1e2d; }
+  .pr-file-status {
+    font-size: 10px;
+    font-weight: 700;
+    width: 12px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+  .pr-file-name {
+    font-size: 11px;
+    color: #cdd6f4;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+  }
+  .pr-file-diff {
+    display: flex;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .pr-files-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: none;
+    border: 1px solid #2a2a3d;
+    border-radius: 6px;
+    color: #6c7086;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    justify-content: center;
+  }
+  .pr-files-toggle:hover {
+    background: #1e1e2d;
+    color: #89b4fa;
+    border-color: #89b4fa55;
+  }
+
+  /* ── v2: PR file search + CODEOWNERS ────────── */
+  .pr-files-search {
+    width: 100%;
+    padding: 4px 8px 4px 26px;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3d;
+    border-radius: 5px;
+    color: #cdd6f4;
+    font-size: 11px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .pr-files-search:focus { border-color: #89b4fa; }
+  .pr-files-search::placeholder { color: #45475a; }
+  .pr-file-owner {
+    font-size: 10px;
+    color: #6c7086;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3d;
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── v2: Branch copy button ──────────────────── */
+  .branch-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: #45475a;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 3px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .branch-copy-btn:hover { color: #89b4fa; }
+
+  /* ── v2: Merge button + dropdown ─────────────── */
+  .detail-merge-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid #a6e3a1;
+    border-radius: 6px;
+    background: rgba(166, 227, 161, 0.1);
+    color: #a6e3a1;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .detail-merge-btn:hover { background: rgba(166, 227, 161, 0.2); }
+  .merge-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3d;
+    border-radius: 8px;
+    min-width: 220px;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .merge-dropdown-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid #2a2a3d;
+  }
+  .merge-dropdown-item:last-child { border-bottom: none; }
+  .merge-dropdown-item:hover { background: #252535; }
+  .merge-dropdown-label { font-size: 12px; font-weight: 500; color: #cdd6f4; }
+  .merge-dropdown-desc { font-size: 11px; color: #585b70; }
+
+  /* ── Phase 1: Work-On-This button ────────────── */
+  .detail-work-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid #a6e3a1;
+    border-radius: 6px;
+    background: rgba(166, 227, 161, 0.1);
+    color: #a6e3a1;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .detail-work-btn:hover { background: rgba(166, 227, 161, 0.2); }
+
+  /* ── Phase 2: Conflict Threats Banner ────────── */
+  .conflict-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(243, 139, 168, 0.08);
+    border-bottom: 1px solid rgba(243, 139, 168, 0.3);
+    flex-shrink: 0;
+  }
+  .conflict-banner-icon { color: #f38ba8; flex-shrink: 0; margin-top: 1px; }
+  .conflict-banner-body { flex: 1; min-width: 0; }
+  .conflict-banner-title { font-size: 12px; font-weight: 600; color: #f38ba8; margin-bottom: 3px; }
+  .conflict-banner-items { display: flex; flex-direction: column; gap: 2px; }
+  .conflict-banner-item { font-size: 11px; color: #a6adc8; }
+  .conflict-banner-item strong { color: #cdd6f4; font-family: monospace; }
+  .conflict-banner-dismiss {
+    background: none; border: none; color: #585b70; cursor: pointer;
+    font-size: 16px; line-height: 1; padding: 0 2px; flex-shrink: 0;
+  }
+  .conflict-banner-dismiss:hover { color: #cdd6f4; }
+
+  /* ── Phase 3: Standup Modal ──────────────────── */
+  .standup-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px) saturate(180%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .standup-modal {
+    background: #18182c;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    width: 580px; max-width: 100%; max-height: 80vh; display: flex; flex-direction: column;
+    animation: fadeScaleIn 0.18s ease;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .standup-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid #2a2a3d;
+  }
+  .standup-title { font-size: 13px; font-weight: 600; color: #cdd6f4; display: flex; align-items: center; gap: 8px; }
+  .standup-body { flex: 1; overflow-y: auto; padding: 16px; }
+  .standup-md {
+    font-size: 12px; color: #cdd6f4; white-space: pre-wrap; line-height: 1.7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .standup-footer {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 8px; padding: 12px 16px; border-top: 1px solid #2a2a3d;
+  }
+
+  /* View toggle pill */
+  .standup-view-toggle {
+    display: flex;
+    border: 1px solid #2a2a3d;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .standup-view-btn {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    color: #585b70;
+    cursor: pointer;
+    transition: all 0.15s;
+    height: 28px;
+  }
+  .standup-view-btn:not(:last-child) { border-right: 1px solid #2a2a3d; }
+  .standup-view-btn.active { background: #89b4fa22; color: #89b4fa; }
+  .standup-view-btn:hover:not(.active) { background: #1e1e2d; color: #cdd6f4; }
+
+  /* Rendered markdown styles */
+  .standup-rendered { line-height: 1.65; }
+  .standup-h2 {
+    font-size: 14px; font-weight: 700; color: #cdd6f4;
+    margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid #2a2a3d;
+  }
+  .standup-h3 {
+    font-size: 12px; font-weight: 600; color: #a6adc8;
+    margin: 12px 0 6px;
+  }
+  .standup-li {
+    display: flex; gap: 8px; align-items: baseline;
+    font-size: 12px; color: #cdd6f4; margin-bottom: 4px;
+  }
+  .standup-bullet { color: #585b70; flex-shrink: 0; font-size: 14px; line-height: 1.3; }
+  .standup-p { font-size: 12px; color: #6c7086; margin: 6px 0; }
+  .standup-em { color: #6c7086; font-style: italic; }
+  .standup-link {
+    color: #89b4fa; text-decoration: none; font-weight: 500;
+  }
+  .standup-link:hover { text-decoration: underline; }
+  .standup-spacer { height: 10px; }
+
+  /* ── Phase 3: Metadata Editor ────────────────── */
+  .metadata-editor { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .metadata-editor-row { display: flex; align-items: flex-start; gap: 10px; }
+  .metadata-editor-label {
+    font-size: 11px; color: #6c7086; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.4px; padding-top: 3px; min-width: 52px; flex-shrink: 0;
+  }
+  .metadata-editor-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1; }
+  .metadata-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 6px; border-radius: 10px; }
+  .metadata-tag-remove {
+    background: none; border: none; color: inherit; opacity: 0.6;
+    cursor: pointer; padding: 0; font-size: 13px; line-height: 1; display: flex; align-items: center;
+  }
+  .metadata-tag-remove:hover { opacity: 1; }
+  .metadata-add-btn {
+    background: #1e1e2d; border: 1px dashed #3a3a5d; color: #6c7086; border-radius: 10px;
+    width: 22px; height: 22px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.12s; padding: 0;
+  }
+  .metadata-add-btn:hover { border-color: #89b4fa; color: #89b4fa; }
+  .metadata-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; background: #1a1a2e;
+    border: 1px solid #2a2a3d; border-radius: 8px; min-width: 160px; max-height: 200px;
+    overflow-y: auto; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .metadata-dropdown-item {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px;
+    background: none; border: none; color: #cdd6f4; font-size: 12px; cursor: pointer; text-align: left; transition: background 0.1s;
+  }
+  .metadata-dropdown-item:hover { background: #252535; }
+
   /* ── Settings switch toggle ── */
   .settings-field-row {
     flex-direction: row !important;
@@ -1453,25 +1772,34 @@ const STYLES = `
     background: #13131c;
   }
 
-  /* ── Liquid Glass theme ── */
+  /* ═══════════════════════════════════════════
+     Liquid Glass theme — deep refractive glass
+     ═══════════════════════════════════════════ */
   body.liquid-glass,
   #root.liquid-glass {
-    background: #08080f;
+    background: radial-gradient(ellipse at 20% 50%, #0d0d22 0%, #06060f 60%, #0a0814 100%);
   }
+
+  /* Chrome bars */
   .liquid-glass .header,
   .liquid-glass .toolbar {
-    background: rgba(8, 8, 18, 0.45) !important;
-    backdrop-filter: blur(56px) saturate(220%) brightness(0.88);
-    -webkit-backdrop-filter: blur(56px) saturate(220%) brightness(0.88);
+    background: rgba(6, 6, 16, 0.52) !important;
+    backdrop-filter: blur(64px) saturate(240%) brightness(0.9);
+    -webkit-backdrop-filter: blur(64px) saturate(240%) brightness(0.9);
     border-bottom: 1px solid rgba(255,255,255,0.07) !important;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.3);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.4);
   }
+
+  /* Board column groups */
   .liquid-glass .col-group {
-    background: rgba(18, 18, 32, 0.28);
-    backdrop-filter: blur(48px) saturate(200%);
-    -webkit-backdrop-filter: blur(48px) saturate(200%);
-    border: 1px solid rgba(255,255,255,0.07);
-    box-shadow: 0 12px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.15);
+    background: rgba(14, 14, 28, 0.32);
+    backdrop-filter: blur(52px) saturate(220%);
+    -webkit-backdrop-filter: blur(52px) saturate(220%);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow:
+      0 16px 56px rgba(0,0,0,0.38),
+      inset 0 1px 0 rgba(255,255,255,0.12),
+      inset 0 -1px 0 rgba(0,0,0,0.18);
     position: relative;
     overflow: hidden;
   }
@@ -1480,39 +1808,57 @@ const STYLES = `
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(137,180,250,0.03) 40%, rgba(203,166,247,0.03) 75%, transparent 100%);
+    background: linear-gradient(
+      148deg,
+      rgba(255,255,255,0.07) 0%,
+      rgba(137,180,250,0.04) 35%,
+      rgba(203,166,247,0.03) 70%,
+      transparent 100%
+    );
     pointer-events: none;
     z-index: 0;
   }
   .liquid-glass .col-group > * { position: relative; z-index: 1; }
+
+  /* Board item cards */
   .liquid-glass .item-card {
-    background: rgba(28, 28, 48, 0.22);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.07);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.09);
+    background: rgba(22, 22, 44, 0.26);
+    backdrop-filter: blur(36px) saturate(200%);
+    -webkit-backdrop-filter: blur(36px) saturate(200%);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow:
+      0 4px 20px rgba(0,0,0,0.22),
+      inset 0 1px 0 rgba(255,255,255,0.1);
     position: relative;
     overflow: hidden;
   }
+  /* Top specular highlight on each card */
   .liquid-glass .item-card::after {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22) 50%, transparent);
     pointer-events: none;
   }
   .liquid-glass .item-card:hover {
-    background: rgba(50, 55, 85, 0.38);
-    border-color: rgba(137,180,250,0.3);
-    box-shadow: 0 6px 30px rgba(0,0,0,0.28), 0 0 0 1px rgba(137,180,250,0.12), inset 0 1px 0 rgba(255,255,255,0.12);
+    background: rgba(46, 50, 82, 0.44);
+    border-color: rgba(137,180,250,0.32);
+    box-shadow:
+      0 8px 36px rgba(0,0,0,0.32),
+      0 0 0 1px rgba(137,180,250,0.14),
+      inset 0 1px 0 rgba(255,255,255,0.14);
   }
+
+  /* Dashboard PR groups */
   .liquid-glass .lp-group {
-    background: rgba(18, 18, 32, 0.28);
-    backdrop-filter: blur(44px) saturate(200%);
-    -webkit-backdrop-filter: blur(44px) saturate(200%);
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 10px 48px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.1);
+    background: rgba(14, 14, 28, 0.32);
+    backdrop-filter: blur(48px) saturate(220%);
+    -webkit-backdrop-filter: blur(48px) saturate(220%);
+    border: 1px solid rgba(255,255,255,0.09);
+    box-shadow:
+      0 12px 52px rgba(0,0,0,0.32),
+      inset 0 1px 0 rgba(255,255,255,0.12);
     border-radius: 12px;
     margin-bottom: 8px;
     position: relative;
@@ -1522,55 +1868,96 @@ const STYLES = `
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(160deg, rgba(255,255,255,0.05) 0%, transparent 45%);
+    background: linear-gradient(
+      155deg,
+      rgba(255,255,255,0.06) 0%,
+      rgba(137,180,250,0.03) 40%,
+      transparent 55%
+    );
     pointer-events: none;
     border-radius: inherit;
     z-index: 0;
   }
   .liquid-glass .lp-group > * { position: relative; z-index: 1; }
-  .liquid-glass .lp-row:hover {
-    background: rgba(137, 180, 250, 0.1);
-  }
+  .liquid-glass .lp-row:hover { background: rgba(137,180,250,0.09); }
   .liquid-glass .lp-group-header {
-    background: rgba(255,255,255,0.02);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.025);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+
+  /* Detail side panel */
+  .liquid-glass .detail-overlay {
+    backdrop-filter: blur(20px) saturate(200%) brightness(0.8) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(200%) brightness(0.8) !important;
+    background: rgba(0,0,0,0.12) !important;
   }
   .liquid-glass .detail-panel {
-    background: rgba(8, 8, 18, 0.62) !important;
-    backdrop-filter: blur(72px) saturate(220%) brightness(0.82) !important;
-    -webkit-backdrop-filter: blur(72px) saturate(220%) brightness(0.82) !important;
-    border-left: 1px solid rgba(255,255,255,0.1) !important;
-    box-shadow: -12px 0 60px rgba(0,0,0,0.45) !important;
+    background: rgba(6, 6, 18, 0.58) !important;
+    backdrop-filter: blur(80px) saturate(240%) brightness(0.85) !important;
+    -webkit-backdrop-filter: blur(80px) saturate(240%) brightness(0.85) !important;
+    border-left: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow:
+      -16px 0 80px rgba(0,0,0,0.55),
+      inset 1px 0 0 rgba(255,255,255,0.06) !important;
   }
+
+  /* Standup modal */
+  .liquid-glass .standup-overlay {
+    backdrop-filter: blur(28px) saturate(220%) brightness(0.75) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(220%) brightness(0.75) !important;
+    background: rgba(0,0,0,0.15) !important;
+  }
+  .liquid-glass .standup-modal {
+    background: rgba(8, 8, 20, 0.62) !important;
+    backdrop-filter: blur(80px) saturate(240%);
+    -webkit-backdrop-filter: blur(80px) saturate(240%);
+    border: 1px solid rgba(255,255,255,0.13) !important;
+    box-shadow:
+      0 40px 100px rgba(0,0,0,0.65),
+      0 0 0 1px rgba(255,255,255,0.05),
+      inset 0 1px 0 rgba(255,255,255,0.14) !important;
+  }
+
+  /* Settings modal */
   .liquid-glass .settings-modal {
-    background: rgba(12, 12, 24, 0.68) !important;
-    backdrop-filter: blur(72px) saturate(220%);
-    -webkit-backdrop-filter: blur(72px) saturate(220%);
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    box-shadow: 0 32px 96px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+    background: rgba(8, 8, 20, 0.68) !important;
+    backdrop-filter: blur(80px) saturate(240%);
+    -webkit-backdrop-filter: blur(80px) saturate(240%);
+    border: 1px solid rgba(255,255,255,0.13) !important;
+    box-shadow:
+      0 40px 100px rgba(0,0,0,0.65),
+      0 0 0 1px rgba(255,255,255,0.05),
+      inset 0 1px 0 rgba(255,255,255,0.14) !important;
   }
+
+  /* Inputs, selects */
   .liquid-glass .sprint-select,
   .liquid-glass .search-input {
-    background: rgba(28, 28, 48, 0.38);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 10px rgba(0,0,0,0.18);
+    background: rgba(20, 20, 40, 0.4);
+    backdrop-filter: blur(28px) saturate(200%);
+    -webkit-backdrop-filter: blur(28px) saturate(200%);
+    border: 1px solid rgba(255,255,255,0.11);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 2px 12px rgba(0,0,0,0.22);
   }
+
+  /* Active tab */
   .liquid-glass .tab-btn.active {
-    background: rgba(137,180,250,0.2);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    box-shadow: 0 0 16px rgba(137,180,250,0.18), inset 0 1px 0 rgba(255,255,255,0.12);
+    background: rgba(137,180,250,0.18);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    box-shadow:
+      0 0 20px rgba(137,180,250,0.22),
+      inset 0 1px 0 rgba(255,255,255,0.14);
+    border-color: rgba(137,180,250,0.3);
   }
-  .liquid-glass .col-group-header {
-    background: transparent;
-  }
+
+  /* Misc */
+  .liquid-glass .col-group-header { background: transparent; }
   .liquid-glass .footer {
-    background: rgba(8, 8, 18, 0.45) !important;
-    backdrop-filter: blur(40px) saturate(200%);
-    -webkit-backdrop-filter: blur(40px) saturate(200%);
-    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    background: rgba(6, 6, 16, 0.52) !important;
+    backdrop-filter: blur(48px) saturate(220%);
+    -webkit-backdrop-filter: blur(48px) saturate(220%);
+    border-top: 1px solid rgba(255,255,255,0.07) !important;
   }
 
   /* ── Light Theme (Catppuccin Latte) ── */
@@ -1640,6 +2027,7 @@ const STYLES = `
     background: #e6e9ef;
     border: 1px solid #bcc0cc;
     box-shadow: 0 1px 4px rgba(76,79,105,0.06);
+    border-radius: 10px;
   }
   .light-theme .lp-group-header {
     background: #e6e9ef;
@@ -1754,6 +2142,73 @@ function getColumnConfig(name: string) {
   return COLUMN_CONFIG[name] ?? { color: '#6c7086', emoji: '·' };
 }
 
+// ── Lightweight markdown renderer for the standup output ──────────────────────
+// Only handles the exact patterns generated by generateStandupMarkdown.
+
+function parseInlineMarkdown(text: string, onOpenUrl: (url: string) => void, key: string): React.ReactNode {
+  const nodes: React.ReactNode[] = [];
+  const linkRe = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = linkRe.exec(text)) !== null) {
+    if (m.index > cursor) {
+      nodes.push(parseItalic(text.slice(cursor, m.index), `${key}-t${cursor}`));
+    }
+    const url = m[2];
+    nodes.push(
+      <a key={`${key}-l${m.index}`} href="#" className="standup-link"
+        onClick={(e) => { e.preventDefault(); onOpenUrl(url); }}>
+        {m[1]}
+      </a>
+    );
+    cursor = m.index + m[0].length;
+  }
+  if (cursor < text.length) nodes.push(parseItalic(text.slice(cursor), `${key}-t${cursor}`));
+  return nodes.length === 1 ? nodes[0] : <React.Fragment key={key}>{nodes}</React.Fragment>;
+}
+
+function parseItalic(text: string, key: string): React.ReactNode {
+  const nodes: React.ReactNode[] = [];
+  const re = /\*([^*]+)\*/g;
+  let cursor = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > cursor) nodes.push(text.slice(cursor, m.index));
+    nodes.push(<em key={`${key}-i${m.index}`} className="standup-em">{m[1]}</em>);
+    cursor = m.index + m[0].length;
+  }
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return nodes.length === 0 ? text : nodes.length === 1 ? nodes[0] : <React.Fragment key={key}>{nodes}</React.Fragment>;
+}
+
+function renderStandupMarkdown(md: string, onOpenUrl: (url: string) => void): React.ReactNode {
+  const lines = md.split('\n');
+  const els: React.ReactNode[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('## ')) {
+      els.push(<h2 key={i} className="standup-h2">{line.slice(3)}</h2>);
+    } else if (line.startsWith('### ')) {
+      els.push(<h3 key={i} className="standup-h3">{parseInlineMarkdown(line.slice(4), onOpenUrl, `${i}`)}</h3>);
+    } else if (line.startsWith('- ')) {
+      els.push(
+        <div key={i} className="standup-li">
+          <span className="standup-bullet">•</span>
+          <span>{parseInlineMarkdown(line.slice(2), onOpenUrl, `${i}`)}</span>
+        </div>
+      );
+    } else if (line.trim() === '') {
+      els.push(<div key={i} className="standup-spacer" />);
+    } else {
+      els.push(<p key={i} className="standup-p">{parseInlineMarkdown(line, onOpenUrl, `${i}`)}</p>);
+    }
+  }
+  return <div className="standup-rendered">{els}</div>;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function App() {
   const [state, setState] = useState<'loading' | 'error' | 'data'>('loading');
   const [data, setData] = useState<RunwayData | null>(null);
@@ -1766,6 +2221,18 @@ export function App() {
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Phase 1: PR file deep linking
+  const [prFiles, setPrFiles] = useState<PRFile[] | null>(null);
+  // Phase 2: conflict threats
+  const [conflictThreats, setConflictThreats] = useState<ConflictThreat[]>([]);
+  // Phase 3: standup
+  const [standupMarkdown, setStandupMarkdown] = useState<string | null>(null);
+  const [standupLoading, setStandupLoading] = useState(false);
+  const [standupView, setStandupView] = useState<'view' | 'markdown'>('view');
+  // Phase 3: repo labels cache keyed by "owner/repo"
+  const [repoLabelsCache, setRepoLabelsCache] = useState<Map<string, GHLabel[]>>(new Map());
+  // v2: CODEOWNERS cache keyed by "owner/repo"
+  const [codeownersCache, setCodeownersCache] = useState<Map<string, Array<{ pattern: string; owners: string[] }>>>(new Map());
 
   useEffect(() => {
     // Inject styles once
@@ -1801,9 +2268,49 @@ export function App() {
           setLinkedPRs(msg.prs);
           break;
         case 'itemBody':
-          // Inject body into the current detail item if it matches
           setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, body: msg.body } : prev);
           break;
+        // Phase 1: PR files
+        case 'prFiles':
+          setPrFiles(msg.files);
+          break;
+        // Phase 2: conflict threats
+        case 'conflictThreats':
+          setConflictThreats(msg.threats);
+          break;
+        // Phase 3: standup
+        case 'standup':
+          setStandupMarkdown(msg.markdown);
+          setStandupLoading(false);
+          break;
+        // Phase 3: metadata confirmed
+        case 'metadataUpdated':
+          setDetailItem((prev) =>
+            prev && prev.id === msg.itemId
+              ? { ...prev, labels: msg.labels, assignees: msg.assignees }
+              : prev
+          );
+          break;
+        // Phase 3: repo labels loaded
+        case 'repoLabels': {
+          const cacheKey = `${msg.owner}/${msg.repo}`;
+          setRepoLabelsCache((prev) => new Map(prev).set(cacheKey, msg.labels));
+          break;
+        }
+        // v2: draft converted to ready
+        case 'prReadied':
+          setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, isDraft: false } : prev);
+          break;
+        // v2: PR merged
+        case 'prMerged':
+          setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, state: 'MERGED' } : prev);
+          break;
+        // v2: CODEOWNERS loaded
+        case 'codeowners': {
+          const coKey = `${msg.owner}/${msg.repo}`;
+          setCodeownersCache((prev) => new Map(prev).set(coKey, msg.entries));
+          break;
+        }
       }
     };
 
@@ -1920,7 +2427,8 @@ export function App() {
   const handleSelectItem = useCallback((item: BoardItem) => {
     setDetailItem(item);
     setLinkedPRs(null);
-    // Fetch body on demand (not loaded in bulk query)
+    setPrFiles(null);
+
     if (item.body === undefined) {
       vscodeApi.postMessage({
         type: 'fetchBody',
@@ -1940,6 +2448,62 @@ export function App() {
         issueNumber: item.number,
       });
     }
+    // Phase 1: fetch changed files for PRs
+    if (item.type === 'PULL_REQUEST') {
+      const prKey = `${item.repositoryOwner}/${item.repository}#${item.number}`;
+      vscodeApi.postMessage({
+        type: 'fetchPRFiles',
+        prKey,
+        owner: item.repositoryOwner,
+        repo: item.repository,
+        prNumber: item.number,
+      });
+      // v2: fetch CODEOWNERS if not already cached
+      vscodeApi.postMessage({
+        type: 'fetchCodeowners',
+        owner: item.repositoryOwner,
+        repo: item.repository,
+      });
+    }
+  }, []);
+
+  // Phase 1: open PR file in editor
+  const handleOpenPRFile = useCallback((owner: string, repo: string, prNumber: number, filename: string, patch?: string) => {
+    vscodeApi.postMessage({ type: 'openPRFile', owner, repo, prNumber, filename, patch });
+  }, []);
+
+  // Phase 1: work on this branch
+  const handleWorkOnThis = useCallback((branchName: string, owner: string, repo: string) => {
+    vscodeApi.postMessage({ type: 'workOnThis', branchName, owner, repo });
+  }, []);
+
+  // Phase 3: generate standup
+  const handleGenerateStandup = useCallback(() => {
+    if (!data?.viewerLogin) return;
+    setStandupLoading(true);
+    setStandupMarkdown(null);
+    setStandupView('view');
+    vscodeApi.postMessage({ type: 'generateStandup', viewerLogin: data.viewerLogin });
+  }, [data?.viewerLogin]);
+
+  // Phase 3: metadata update
+  const handleUpdateMetadata = useCallback((itemId: string, owner: string, repo: string, issueNumber: number, labels?: string[], assignees?: string[]) => {
+    vscodeApi.postMessage({ type: 'updateMetadata', itemId, owner, repo, issueNumber, labels, assignees });
+  }, []);
+
+  // Phase 3: fetch repo labels
+  const handleFetchRepoLabels = useCallback((owner: string, repo: string) => {
+    vscodeApi.postMessage({ type: 'fetchRepoLabels', owner, repo });
+  }, []);
+
+  // v2: convert draft to ready
+  const handleConvertDraftToReady = useCallback((itemId: string, owner: string, repo: string, prNumber: number) => {
+    vscodeApi.postMessage({ type: 'convertDraftToReady', itemId, owner, repo, prNumber });
+  }, []);
+
+  // v2: merge PR
+  const handleMergePR = useCallback((itemId: string, owner: string, repo: string, prNumber: number, mergeMethod: 'merge' | 'squash' | 'rebase') => {
+    vscodeApi.postMessage({ type: 'mergePR', itemId, owner, repo, prNumber, mergeMethod });
   }, []);
 
   const formatLastUpdated = (iso: string) => {
@@ -1968,6 +2532,24 @@ export function App() {
         </div>
         <div className="header-right">
           {data && <span className="total-badge">{data.totalCount} items</span>}
+          {/* Phase 3: Standup Generator */}
+          {data && (
+            <button
+              className={`btn${standupLoading ? ' loading' : ''}`}
+              onClick={handleGenerateStandup}
+              disabled={standupLoading}
+              title="Generate daily standup"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+              Standup
+            </button>
+          )}
           {/* Settings button */}
           <button className="btn" onClick={() => setSettingsOpen(true)} title="Project settings">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2008,6 +2590,32 @@ export function App() {
           );
         })}
       </div>
+
+      {/* Phase 2: Conflict Threats Banner */}
+      {conflictThreats.length > 0 && (
+        <div className="conflict-banner">
+          <svg className="conflict-banner-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <div className="conflict-banner-body">
+            <div className="conflict-banner-title">
+              {conflictThreats.length} file conflict{conflictThreats.length > 1 ? 's' : ''} detected with open PRs
+            </div>
+            <div className="conflict-banner-items">
+              {conflictThreats.slice(0, 3).map((t, i) => (
+                <div key={i} className="conflict-banner-item">
+                  <strong>{t.filename}</strong> — also modified in PR #{t.prNumber} by {t.prAuthor}
+                </div>
+              ))}
+              {conflictThreats.length > 3 && (
+                <div className="conflict-banner-item">…and {conflictThreats.length - 3} more</div>
+              )}
+            </div>
+          </div>
+          <button className="conflict-banner-dismiss" onClick={() => setConflictThreats([])} title="Dismiss">×</button>
+        </div>
+      )}
 
       {/* Sprint filter dropdown */}
       {data && data.sprints.length > 0 && (
@@ -2140,9 +2748,88 @@ export function App() {
         <DetailPanel
           item={detailItem}
           linkedPRs={linkedPRs}
-          onClose={() => { setDetailItem(null); setLinkedPRs(null); }}
-          onOpenUrl={handleOpenUrl}
+          prFiles={prFiles}
+          repoLabels={repoLabelsCache.get(`${detailItem.repositoryOwner}/${detailItem.repository}`) ?? []}
+          codeownersEntries={codeownersCache.get(`${detailItem.repositoryOwner}/${detailItem.repository}`) ?? []}
+          onClose={() => { setDetailItem(null); setLinkedPRs(null); setPrFiles(null); }}
+          actions={{
+            onOpenUrl: handleOpenUrl,
+            onWorkOnThis: handleWorkOnThis,
+            onOpenPRFile: handleOpenPRFile,
+            onUpdateMetadata: handleUpdateMetadata,
+            onFetchRepoLabels: handleFetchRepoLabels,
+            onConvertDraftToReady: handleConvertDraftToReady,
+            onMergePR: handleMergePR,
+          }}
         />
+      )}
+
+      {/* Phase 3: Standup modal */}
+      {(standupLoading || standupMarkdown !== null) && (
+        <div className="standup-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setStandupMarkdown(null); setStandupLoading(false); } }}>
+          <div className="standup-modal">
+            <div className="standup-header">
+              <span className="standup-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#89b4fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Daily Standup
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* View toggle — only shown when content is ready */}
+                {standupMarkdown && (
+                  <div className="standup-view-toggle">
+                    <button
+                      className={`standup-view-btn${standupView === 'view' ? ' active' : ''}`}
+                      onClick={() => setStandupView('view')}
+                    >
+                      View
+                    </button>
+                    <button
+                      className={`standup-view-btn${standupView === 'markdown' ? ' active' : ''}`}
+                      onClick={() => setStandupView('markdown')}
+                    >
+                      Markdown
+                    </button>
+                  </div>
+                )}
+                <button className="detail-close-btn" onClick={() => { setStandupMarkdown(null); setStandupLoading(false); }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="standup-body">
+              {standupLoading && !standupMarkdown && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6c7086', fontSize: 12 }}>
+                  <div style={{ width: 12, height: 12, border: '2px solid #45475a', borderTopColor: '#89b4fa', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
+                  Fetching your GitHub activity…
+                </div>
+              )}
+              {standupMarkdown && standupView === 'view' && renderStandupMarkdown(standupMarkdown, handleOpenUrl)}
+              {standupMarkdown && standupView === 'markdown' && <pre className="standup-md">{standupMarkdown}</pre>}
+            </div>
+            {standupMarkdown && (
+              <div className="standup-footer">
+                <button className="btn" onClick={() => { setStandupMarkdown(null); setStandupLoading(false); }}>Close</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(standupMarkdown!).catch(() => undefined);
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copy Markdown
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Settings panel */}

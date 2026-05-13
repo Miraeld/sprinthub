@@ -16,6 +16,13 @@ export function activate(context: vscode.ExtensionContext) {
       SprintHubPanel.createOrShow(context.extensionUri);
     })
   );
+
+  // Phase 2: Status Bar Blocker Watchdog command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('sprinthub.showBlockers', () => {
+      SprintHubPanel.currentPanel?.showBlockersQuickPick();
+    })
+  );
 }
 
 export function deactivate() {}

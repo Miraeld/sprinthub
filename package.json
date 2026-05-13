@@ -2,16 +2,16 @@
   "name": "sprinthub",
   "displayName": "SprintHub",
   "description": "GitHub Projects v2 dashboard inside VS Code — sprint board, PR status, CI checks, and team hub",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "miraeld",
   "icon": "resources/sprinthub-icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gaelrobin/sprinthub"
+    "url": "https://github.com/Miraeld/sprinthub"
   },
-  "homepage": "https://github.com/gaelrobin/sprinthub#readme",
+  "homepage": "https://github.com/Miraeld/sprinthub#readme",
   "bugs": {
-    "url": "https://github.com/gaelrobin/sprinthub/issues"
+    "url": "https://github.com/Miraeld/sprinthub/issues"
   },
   "keywords": [
     "github",
@@ -42,6 +42,11 @@
         "title": "Open SprintHub",
         "category": "SprintHub",
         "icon": "$(project)"
+      },
+      {
+        "command": "sprinthub.showBlockers",
+        "title": "Show Blockers",
+        "category": "SprintHub"
       }
     ],
     "viewsContainers": {
@@ -108,7 +113,7 @@
         },
         "sprinthub.liquidGlass": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Enable frosted-glass / translucent UI style"
         },
         "sprinthub.theme": {
