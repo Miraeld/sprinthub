@@ -14,7 +14,7 @@ import {
   mergePR,
   fetchCodeowners,
 } from './githubService';
-import { BoardItem, ConflictThreat, ExtensionMessage, PRFile, RunwayConfig, RunwayData, WebviewMessage } from './types';
+import { BoardItem, ConflictThreat, ExtensionMessage, RunwayConfig, RunwayData, WebviewMessage } from './types';
 
 const exec = util.promisify(cp.exec);
 

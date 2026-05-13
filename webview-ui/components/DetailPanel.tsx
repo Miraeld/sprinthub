@@ -264,7 +264,7 @@ function PRFilesSection({
       </div>
 
       {query && filtered.length === 0 && (
-        <span style={{ fontSize: 11, color: '#45475a', fontStyle: 'italic', padding: '4px 8px', display: 'block' }}>No files match "{query}"</span>
+        <span style={{ fontSize: 11, color: '#45475a', fontStyle: 'italic', padding: '4px 8px', display: 'block' }}>No files match &ldquo;{query}&rdquo;</span>
       )}
 
       {shouldCollapse && (
@@ -346,7 +346,7 @@ function MetadataEditor({
   const [localLabels, setLocalLabels] = useState<GHLabel[]>(item.labels);
   const [labelDropOpen, setLabelDropOpen] = useState(false);
 
-  useEffect(() => { setLocalLabels(item.labels); }, [item.id]);
+  useEffect(() => { setLocalLabels(item.labels); }, [item.id, item.labels]);
 
   const removeLabel = (name: string) => {
     const next = localLabels.filter((l) => l.name !== name);
