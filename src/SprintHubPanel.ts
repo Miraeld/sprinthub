@@ -159,7 +159,7 @@ export class SprintHubPanel {
       ownerType: config.get<string>('ownerType', 'organization') as 'organization' | 'user',
       statusFieldName: config.get<string>('statusFieldName', 'Status'),
       refreshInterval: config.get<number>('refreshInterval', 5),
-      liquidGlass: config.get<boolean>('liquidGlass', false),
+      liquidGlass: config.get<boolean>('liquidGlass', true),
       theme: config.get<string>('theme', 'dark') as 'dark' | 'light',
       colorBlind: config.get<boolean>('colorBlind', false),
     };

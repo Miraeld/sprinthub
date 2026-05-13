@@ -113,7 +113,7 @@
         },
         "sprinthub.liquidGlass": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Enable frosted-glass / translucent UI style"
         },
         "sprinthub.theme": {

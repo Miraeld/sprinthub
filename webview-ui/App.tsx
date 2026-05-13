@@ -1194,11 +1194,10 @@ const STYLES = `
 
   .lp-header-row {
     display: grid;
-    grid-template-columns: 44px 54px 1fr 88px 30px 78px minmax(130px, auto);
+    grid-template-columns: 36px 52px 1fr 80px 30px 80px 140px;
     gap: 4px;
     align-items: center;
-    /* Match the effective indent of .lp-row (lp-group border 1px + lp-row padding 12px = 13px each side) */
-    padding: 0 13px 6px;
+    padding: 0 0 6px;
     border-bottom: 1px solid #2a2a3d;
     color: #45475a;
     font-size: 10px;
@@ -1207,12 +1206,12 @@ const STYLES = `
     letter-spacing: 0.04em;
   }
 
-  /* Prevent header cell text from overflowing its column */
+  /* Clip header label text so it doesn't overflow into the next column */
   .lp-col-age, .lp-col-status, .lp-col-title,
   .lp-col-diff, .lp-col-author, .lp-col-collabs, .lp-col-branch {
     overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;
+    text-overflow: clip;
     min-width: 0;
   }
   .lp-col-age { text-align: right; }
@@ -1256,7 +1255,7 @@ const STYLES = `
 
   .lp-row {
     display: grid;
-    grid-template-columns: 44px 54px 1fr 88px 30px 78px minmax(130px, auto);
+    grid-template-columns: 36px 52px 1fr 80px 30px 80px 140px;
     gap: 4px;
     align-items: center;
     padding: 5px 12px;
