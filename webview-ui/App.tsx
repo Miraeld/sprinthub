@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { BoardItem, ExtensionMessage, LinkedPR, RunwayConfig, RunwayData } from '../src/types';
+import { BoardItem, ConflictThreat, ExtensionMessage, GHLabel, LinkedPR, PRFile, RunwayConfig, RunwayData } from '../src/types';
 import { ColumnGroup } from './components/ColumnGroup';
 import { DetailPanel } from './components/DetailPanel';
 import { LaunchpadView } from './components/LaunchpadView';
@@ -1407,6 +1407,144 @@ const STYLES = `
     font-size: 13px;
   }
 
+  /* ── Phase 1: PR Files ───────────────────────── */
+  .pr-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 4px;
+  }
+  .pr-file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .pr-file-row:hover { background: #1e1e2d; }
+  .pr-file-status {
+    font-size: 10px;
+    font-weight: 700;
+    width: 12px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+  .pr-file-name {
+    font-size: 11px;
+    color: #cdd6f4;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+  }
+  .pr-file-diff {
+    display: flex;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* ── Phase 1: Work-On-This button ────────────── */
+  .detail-work-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid #a6e3a1;
+    border-radius: 6px;
+    background: rgba(166, 227, 161, 0.1);
+    color: #a6e3a1;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .detail-work-btn:hover { background: rgba(166, 227, 161, 0.2); }
+
+  /* ── Phase 2: Conflict Threats Banner ────────── */
+  .conflict-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(243, 139, 168, 0.08);
+    border-bottom: 1px solid rgba(243, 139, 168, 0.3);
+    flex-shrink: 0;
+  }
+  .conflict-banner-icon { color: #f38ba8; flex-shrink: 0; margin-top: 1px; }
+  .conflict-banner-body { flex: 1; min-width: 0; }
+  .conflict-banner-title { font-size: 12px; font-weight: 600; color: #f38ba8; margin-bottom: 3px; }
+  .conflict-banner-items { display: flex; flex-direction: column; gap: 2px; }
+  .conflict-banner-item { font-size: 11px; color: #a6adc8; }
+  .conflict-banner-item strong { color: #cdd6f4; font-family: monospace; }
+  .conflict-banner-dismiss {
+    background: none; border: none; color: #585b70; cursor: pointer;
+    font-size: 16px; line-height: 1; padding: 0 2px; flex-shrink: 0;
+  }
+  .conflict-banner-dismiss:hover { color: #cdd6f4; }
+
+  /* ── Phase 3: Standup Modal ──────────────────── */
+  .standup-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .standup-modal {
+    background: #1a1a2e; border: 1px solid #2a2a3d; border-radius: 12px;
+    width: 560px; max-width: 100%; max-height: 80vh; display: flex; flex-direction: column;
+    animation: fadeScaleIn 0.18s ease; box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+  }
+  .standup-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid #2a2a3d;
+  }
+  .standup-title { font-size: 13px; font-weight: 600; color: #cdd6f4; display: flex; align-items: center; gap: 8px; }
+  .standup-body { flex: 1; overflow-y: auto; padding: 16px; }
+  .standup-md {
+    font-size: 12px; color: #cdd6f4; white-space: pre-wrap; line-height: 1.7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .standup-footer {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 8px; padding: 12px 16px; border-top: 1px solid #2a2a3d;
+  }
+
+  /* ── Phase 3: Metadata Editor ────────────────── */
+  .metadata-editor { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .metadata-editor-row { display: flex; align-items: flex-start; gap: 10px; }
+  .metadata-editor-label {
+    font-size: 11px; color: #6c7086; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.4px; padding-top: 3px; min-width: 52px; flex-shrink: 0;
+  }
+  .metadata-editor-tags { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1; }
+  .metadata-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 6px; border-radius: 10px; }
+  .metadata-tag-remove {
+    background: none; border: none; color: inherit; opacity: 0.6;
+    cursor: pointer; padding: 0; font-size: 13px; line-height: 1; display: flex; align-items: center;
+  }
+  .metadata-tag-remove:hover { opacity: 1; }
+  .metadata-add-btn {
+    background: #1e1e2d; border: 1px dashed #3a3a5d; color: #6c7086; border-radius: 10px;
+    width: 22px; height: 22px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.12s; padding: 0;
+  }
+  .metadata-add-btn:hover { border-color: #89b4fa; color: #89b4fa; }
+  .metadata-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; background: #1a1a2e;
+    border: 1px solid #2a2a3d; border-radius: 8px; min-width: 160px; max-height: 200px;
+    overflow-y: auto; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .metadata-dropdown-item {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px;
+    background: none; border: none; color: #cdd6f4; font-size: 12px; cursor: pointer; text-align: left; transition: background 0.1s;
+  }
+  .metadata-dropdown-item:hover { background: #252535; }
+
   /* ── Settings switch toggle ── */
   .settings-field-row {
     flex-direction: row !important;
@@ -1766,6 +1904,15 @@ export function App() {
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Phase 1: PR file deep linking
+  const [prFiles, setPrFiles] = useState<PRFile[] | null>(null);
+  // Phase 2: conflict threats
+  const [conflictThreats, setConflictThreats] = useState<ConflictThreat[]>([]);
+  // Phase 3: standup
+  const [standupMarkdown, setStandupMarkdown] = useState<string | null>(null);
+  const [standupLoading, setStandupLoading] = useState(false);
+  // Phase 3: repo labels cache keyed by "owner/repo"
+  const [repoLabelsCache, setRepoLabelsCache] = useState<Map<string, GHLabel[]>>(new Map());
 
   useEffect(() => {
     // Inject styles once
@@ -1801,9 +1948,35 @@ export function App() {
           setLinkedPRs(msg.prs);
           break;
         case 'itemBody':
-          // Inject body into the current detail item if it matches
           setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, body: msg.body } : prev);
           break;
+        // Phase 1: PR files
+        case 'prFiles':
+          setPrFiles(msg.files);
+          break;
+        // Phase 2: conflict threats
+        case 'conflictThreats':
+          setConflictThreats(msg.threats);
+          break;
+        // Phase 3: standup
+        case 'standup':
+          setStandupMarkdown(msg.markdown);
+          setStandupLoading(false);
+          break;
+        // Phase 3: metadata confirmed
+        case 'metadataUpdated':
+          setDetailItem((prev) =>
+            prev && prev.id === msg.itemId
+              ? { ...prev, labels: msg.labels, assignees: msg.assignees }
+              : prev
+          );
+          break;
+        // Phase 3: repo labels loaded
+        case 'repoLabels': {
+          const cacheKey = `${msg.owner}/${msg.repo}`;
+          setRepoLabelsCache((prev) => new Map(prev).set(cacheKey, msg.labels));
+          break;
+        }
       }
     };
 
@@ -1920,7 +2093,8 @@ export function App() {
   const handleSelectItem = useCallback((item: BoardItem) => {
     setDetailItem(item);
     setLinkedPRs(null);
-    // Fetch body on demand (not loaded in bulk query)
+    setPrFiles(null);
+
     if (item.body === undefined) {
       vscodeApi.postMessage({
         type: 'fetchBody',
@@ -1940,6 +2114,45 @@ export function App() {
         issueNumber: item.number,
       });
     }
+    // Phase 1: fetch changed files for PRs
+    if (item.type === 'PULL_REQUEST') {
+      const prKey = `${item.repositoryOwner}/${item.repository}#${item.number}`;
+      vscodeApi.postMessage({
+        type: 'fetchPRFiles',
+        prKey,
+        owner: item.repositoryOwner,
+        repo: item.repository,
+        prNumber: item.number,
+      });
+    }
+  }, []);
+
+  // Phase 1: open PR file in editor
+  const handleOpenPRFile = useCallback((owner: string, repo: string, prNumber: number, filename: string, patch?: string) => {
+    vscodeApi.postMessage({ type: 'openPRFile', owner, repo, prNumber, filename, patch });
+  }, []);
+
+  // Phase 1: work on this branch
+  const handleWorkOnThis = useCallback((branchName: string, owner: string, repo: string) => {
+    vscodeApi.postMessage({ type: 'workOnThis', branchName, owner, repo });
+  }, []);
+
+  // Phase 3: generate standup
+  const handleGenerateStandup = useCallback(() => {
+    if (!data?.viewerLogin) return;
+    setStandupLoading(true);
+    setStandupMarkdown(null);
+    vscodeApi.postMessage({ type: 'generateStandup', viewerLogin: data.viewerLogin });
+  }, [data?.viewerLogin]);
+
+  // Phase 3: metadata update
+  const handleUpdateMetadata = useCallback((itemId: string, owner: string, repo: string, issueNumber: number, labels?: string[], assignees?: string[]) => {
+    vscodeApi.postMessage({ type: 'updateMetadata', itemId, owner, repo, issueNumber, labels, assignees });
+  }, []);
+
+  // Phase 3: fetch repo labels
+  const handleFetchRepoLabels = useCallback((owner: string, repo: string) => {
+    vscodeApi.postMessage({ type: 'fetchRepoLabels', owner, repo });
   }, []);
 
   const formatLastUpdated = (iso: string) => {
@@ -1968,6 +2181,24 @@ export function App() {
         </div>
         <div className="header-right">
           {data && <span className="total-badge">{data.totalCount} items</span>}
+          {/* Phase 3: Standup Generator */}
+          {data && (
+            <button
+              className={`btn${standupLoading ? ' loading' : ''}`}
+              onClick={handleGenerateStandup}
+              disabled={standupLoading}
+              title="Generate daily standup"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+              Standup
+            </button>
+          )}
           {/* Settings button */}
           <button className="btn" onClick={() => setSettingsOpen(true)} title="Project settings">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2008,6 +2239,32 @@ export function App() {
           );
         })}
       </div>
+
+      {/* Phase 2: Conflict Threats Banner */}
+      {conflictThreats.length > 0 && (
+        <div className="conflict-banner">
+          <svg className="conflict-banner-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <div className="conflict-banner-body">
+            <div className="conflict-banner-title">
+              {conflictThreats.length} file conflict{conflictThreats.length > 1 ? 's' : ''} detected with open PRs
+            </div>
+            <div className="conflict-banner-items">
+              {conflictThreats.slice(0, 3).map((t, i) => (
+                <div key={i} className="conflict-banner-item">
+                  <strong>{t.filename}</strong> — also modified in PR #{t.prNumber} by {t.prAuthor}
+                </div>
+              ))}
+              {conflictThreats.length > 3 && (
+                <div className="conflict-banner-item">…and {conflictThreats.length - 3} more</div>
+              )}
+            </div>
+          </div>
+          <button className="conflict-banner-dismiss" onClick={() => setConflictThreats([])} title="Dismiss">×</button>
+        </div>
+      )}
 
       {/* Sprint filter dropdown */}
       {data && data.sprints.length > 0 && (
@@ -2140,9 +2397,64 @@ export function App() {
         <DetailPanel
           item={detailItem}
           linkedPRs={linkedPRs}
-          onClose={() => { setDetailItem(null); setLinkedPRs(null); }}
+          prFiles={prFiles}
+          repoLabels={repoLabelsCache.get(`${detailItem.repositoryOwner}/${detailItem.repository}`) ?? []}
+          onClose={() => { setDetailItem(null); setLinkedPRs(null); setPrFiles(null); }}
           onOpenUrl={handleOpenUrl}
+          onWorkOnThis={handleWorkOnThis}
+          onOpenPRFile={handleOpenPRFile}
+          onUpdateMetadata={handleUpdateMetadata}
+          onFetchRepoLabels={handleFetchRepoLabels}
         />
+      )}
+
+      {/* Phase 3: Standup modal */}
+      {(standupLoading || standupMarkdown !== null) && (
+        <div className="standup-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setStandupMarkdown(null); setStandupLoading(false); } }}>
+          <div className="standup-modal">
+            <div className="standup-header">
+              <span className="standup-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#89b4fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Daily Standup
+              </span>
+              <button className="detail-close-btn" onClick={() => { setStandupMarkdown(null); setStandupLoading(false); }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div className="standup-body">
+              {standupLoading && !standupMarkdown && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6c7086', fontSize: 12 }}>
+                  <div style={{ width: 12, height: 12, border: '2px solid #45475a', borderTopColor: '#89b4fa', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
+                  Fetching your GitHub activity…
+                </div>
+              )}
+              {standupMarkdown && <pre className="standup-md">{standupMarkdown}</pre>}
+            </div>
+            {standupMarkdown && (
+              <div className="standup-footer">
+                <button className="btn" onClick={() => { setStandupMarkdown(null); setStandupLoading(false); }}>Close</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    vscodeApi.postMessage({ type: 'openUrl', url: `data:text/plain,${encodeURIComponent(standupMarkdown!)}` });
+                    navigator.clipboard?.writeText(standupMarkdown!).catch(() => undefined);
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copy to Clipboard
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Settings panel */}

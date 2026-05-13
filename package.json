@@ -42,6 +42,11 @@
         "title": "Open SprintHub",
         "category": "SprintHub",
         "icon": "$(project)"
+      },
+      {
+        "command": "sprinthub.showBlockers",
+        "title": "Show Blockers",
+        "category": "SprintHub"
       }
     ],
     "viewsContainers": {
