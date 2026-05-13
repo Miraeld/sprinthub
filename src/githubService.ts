@@ -872,6 +872,80 @@ export async function fetchRepoLabels(owner: string, repo: string): Promise<GHLa
   return json.map((l) => ({ name: l.name, color: l.color }));
 }
 
+// ─── v2 extras ───────────────────────────────────────────────────────────────
+
+export async function convertDraftToReady(owner: string, repo: string, prNumber: number): Promise<void> {
+  const token = await getToken();
+  const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ draft: false }),
+  });
+  if (!resp.ok) throw new Error(`GitHub PATCH pull failed: ${resp.status} ${resp.statusText}`);
+}
+
+export async function mergePR(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  mergeMethod: 'merge' | 'squash' | 'rebase'
+): Promise<void> {
+  const token = await getToken();
+  const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ merge_method: mergeMethod }),
+  });
+  if (!resp.ok) {
+    const json = await resp.json().catch(() => ({})) as { message?: string };
+    throw new Error(json.message ?? `Merge failed: ${resp.status} ${resp.statusText}`);
+  }
+}
+
+export async function fetchCodeowners(
+  owner: string,
+  repo: string
+): Promise<Array<{ pattern: string; owners: string[] }>> {
+  const token = await getToken();
+
+  async function tryPath(path: string): Promise<string | null> {
+    const resp = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      headers: { Authorization: `bearer ${token}`, Accept: 'application/vnd.github+json' },
+    });
+    if (!resp.ok) return null;
+    const json = (await resp.json()) as { content?: string; encoding?: string };
+    if (json.encoding === 'base64' && json.content) {
+      return atob(json.content.replace(/\n/g, ''));
+    }
+    return null;
+  }
+
+  const content =
+    (await tryPath('.github/CODEOWNERS')) ??
+    (await tryPath('CODEOWNERS')) ??
+    (await tryPath('docs/CODEOWNERS'));
+
+  if (!content) return [];
+
+  const entries: Array<{ pattern: string; owners: string[] }> = [];
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 2) continue;
+    entries.push({ pattern: parts[0], owners: parts.slice(1) });
+  }
+  return entries;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function fetchItemBody(

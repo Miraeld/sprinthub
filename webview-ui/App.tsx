@@ -1471,6 +1471,97 @@ const STYLES = `
     border-color: #89b4fa55;
   }
 
+  /* ── v2: PR file search + CODEOWNERS ────────── */
+  .pr-files-search {
+    width: 100%;
+    padding: 4px 8px 4px 26px;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3d;
+    border-radius: 5px;
+    color: #cdd6f4;
+    font-size: 11px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .pr-files-search:focus { border-color: #89b4fa; }
+  .pr-files-search::placeholder { color: #45475a; }
+  .pr-file-owner {
+    font-size: 10px;
+    color: #6c7086;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3d;
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── v2: Branch copy button ──────────────────── */
+  .branch-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: #45475a;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 3px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+  }
+  .branch-copy-btn:hover { color: #89b4fa; }
+
+  /* ── v2: Merge button + dropdown ─────────────── */
+  .detail-merge-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid #a6e3a1;
+    border-radius: 6px;
+    background: rgba(166, 227, 161, 0.1);
+    color: #a6e3a1;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .detail-merge-btn:hover { background: rgba(166, 227, 161, 0.2); }
+  .merge-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: #1a1a2e;
+    border: 1px solid #2a2a3d;
+    border-radius: 8px;
+    min-width: 220px;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .merge-dropdown-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid #2a2a3d;
+  }
+  .merge-dropdown-item:last-child { border-bottom: none; }
+  .merge-dropdown-item:hover { background: #252535; }
+  .merge-dropdown-label { font-size: 12px; font-weight: 500; color: #cdd6f4; }
+  .merge-dropdown-desc { font-size: 11px; color: #585b70; }
+
   /* ── Phase 1: Work-On-This button ────────────── */
   .detail-work-btn {
     display: flex;
@@ -2049,6 +2140,8 @@ export function App() {
   const [standupView, setStandupView] = useState<'view' | 'markdown'>('view');
   // Phase 3: repo labels cache keyed by "owner/repo"
   const [repoLabelsCache, setRepoLabelsCache] = useState<Map<string, GHLabel[]>>(new Map());
+  // v2: CODEOWNERS cache keyed by "owner/repo"
+  const [codeownersCache, setCodeownersCache] = useState<Map<string, Array<{ pattern: string; owners: string[] }>>>(new Map());
 
   useEffect(() => {
     // Inject styles once
@@ -2111,6 +2204,20 @@ export function App() {
         case 'repoLabels': {
           const cacheKey = `${msg.owner}/${msg.repo}`;
           setRepoLabelsCache((prev) => new Map(prev).set(cacheKey, msg.labels));
+          break;
+        }
+        // v2: draft converted to ready
+        case 'prReadied':
+          setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, isDraft: false } : prev);
+          break;
+        // v2: PR merged
+        case 'prMerged':
+          setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, state: 'MERGED' } : prev);
+          break;
+        // v2: CODEOWNERS loaded
+        case 'codeowners': {
+          const coKey = `${msg.owner}/${msg.repo}`;
+          setCodeownersCache((prev) => new Map(prev).set(coKey, msg.entries));
           break;
         }
       }
@@ -2260,6 +2367,12 @@ export function App() {
         repo: item.repository,
         prNumber: item.number,
       });
+      // v2: fetch CODEOWNERS if not already cached
+      vscodeApi.postMessage({
+        type: 'fetchCodeowners',
+        owner: item.repositoryOwner,
+        repo: item.repository,
+      });
     }
   }, []);
 
@@ -2290,6 +2403,16 @@ export function App() {
   // Phase 3: fetch repo labels
   const handleFetchRepoLabels = useCallback((owner: string, repo: string) => {
     vscodeApi.postMessage({ type: 'fetchRepoLabels', owner, repo });
+  }, []);
+
+  // v2: convert draft to ready
+  const handleConvertDraftToReady = useCallback((itemId: string, owner: string, repo: string, prNumber: number) => {
+    vscodeApi.postMessage({ type: 'convertDraftToReady', itemId, owner, repo, prNumber });
+  }, []);
+
+  // v2: merge PR
+  const handleMergePR = useCallback((itemId: string, owner: string, repo: string, prNumber: number, mergeMethod: 'merge' | 'squash' | 'rebase') => {
+    vscodeApi.postMessage({ type: 'mergePR', itemId, owner, repo, prNumber, mergeMethod });
   }, []);
 
   const formatLastUpdated = (iso: string) => {
@@ -2536,12 +2659,17 @@ export function App() {
           linkedPRs={linkedPRs}
           prFiles={prFiles}
           repoLabels={repoLabelsCache.get(`${detailItem.repositoryOwner}/${detailItem.repository}`) ?? []}
+          codeownersEntries={codeownersCache.get(`${detailItem.repositoryOwner}/${detailItem.repository}`) ?? []}
           onClose={() => { setDetailItem(null); setLinkedPRs(null); setPrFiles(null); }}
-          onOpenUrl={handleOpenUrl}
-          onWorkOnThis={handleWorkOnThis}
-          onOpenPRFile={handleOpenPRFile}
-          onUpdateMetadata={handleUpdateMetadata}
-          onFetchRepoLabels={handleFetchRepoLabels}
+          actions={{
+            onOpenUrl: handleOpenUrl,
+            onWorkOnThis: handleWorkOnThis,
+            onOpenPRFile: handleOpenPRFile,
+            onUpdateMetadata: handleUpdateMetadata,
+            onFetchRepoLabels: handleFetchRepoLabels,
+            onConvertDraftToReady: handleConvertDraftToReady,
+            onMergePR: handleMergePR,
+          }}
         />
       )}
 

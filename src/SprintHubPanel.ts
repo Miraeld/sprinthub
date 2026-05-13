@@ -10,6 +10,9 @@ import {
   generateStandupMarkdown,
   updateIssueMetadata,
   fetchRepoLabels,
+  convertDraftToReady,
+  mergePR,
+  fetchCodeowners,
 } from './githubService';
 import { BoardItem, ConflictThreat, ExtensionMessage, PRFile, RunwayConfig, RunwayData, WebviewMessage } from './types';
 
@@ -115,6 +118,15 @@ export class SprintHubPanel {
             break;
           case 'fetchRepoLabels':
             void this._fetchRepoLabels(message.owner, message.repo);
+            break;
+          case 'convertDraftToReady':
+            void this._convertDraftToReady(message.itemId, message.owner, message.repo, message.prNumber);
+            break;
+          case 'mergePR':
+            void this._mergePR(message.itemId, message.owner, message.repo, message.prNumber, message.mergeMethod);
+            break;
+          case 'fetchCodeowners':
+            void this._fetchCodeowners(message.owner, message.repo);
             break;
         }
       },
@@ -492,6 +504,42 @@ export class SprintHubPanel {
       this._post({ type: 'repoLabels', owner, repo, labels });
     } catch {
       this._post({ type: 'repoLabels', owner, repo, labels: [] });
+    }
+  }
+
+  // ─── v2 extras ───────────────────────────────────────────────────────────────
+
+  private async _convertDraftToReady(itemId: string, owner: string, repo: string, prNumber: number) {
+    try {
+      await convertDraftToReady(owner, repo, prNumber);
+      this._post({ type: 'prReadied', itemId });
+    } catch (err) {
+      vscode.window.showErrorMessage(`SprintHub: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  private async _mergePR(
+    itemId: string,
+    owner: string,
+    repo: string,
+    prNumber: number,
+    mergeMethod: 'merge' | 'squash' | 'rebase'
+  ) {
+    try {
+      await mergePR(owner, repo, prNumber, mergeMethod);
+      this._post({ type: 'prMerged', itemId });
+      vscode.window.showInformationMessage(`SprintHub: PR #${prNumber} merged successfully.`);
+    } catch (err) {
+      vscode.window.showErrorMessage(`SprintHub: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  private async _fetchCodeowners(owner: string, repo: string) {
+    try {
+      const entries = await fetchCodeowners(owner, repo);
+      this._post({ type: 'codeowners', owner, repo, entries });
+    } catch {
+      this._post({ type: 'codeowners', owner, repo, entries: [] });
     }
   }
 

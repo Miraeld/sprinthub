@@ -104,17 +104,30 @@ function ReviewDot({ reviews }: { reviews: ReviewInfo[] | undefined }) {
 
 // ─── Row ─────────────────────────────────────────────────────────────────────
 
-function LaunchpadRow({ item, onSelect, onOpenUrl }: { item: BoardItem; onSelect: (i: BoardItem) => void; onOpenUrl: (url: string) => void }) {
+function LaunchpadRow({ item, viewerLogin, onSelect, onOpenUrl }: { item: BoardItem; viewerLogin: string; onSelect: (i: BoardItem) => void; onOpenUrl: (url: string) => void }) {
   const age = timeAgo(item.updatedAt);
   const collaborators = [
     ...item.assignees,
     ...(item.reviewRequests ?? []),
   ].filter((u, i, arr) => arr.findIndex((x) => x.login === u.login) === i).slice(0, 4);
 
+  const daysSinceUpdate = (Date.now() - new Date(item.updatedAt).getTime()) / 86_400_000;
+  const isStale = daysSinceUpdate > 7;
+  const waitingOnMe = viewerLogin ? item.reviewRequests?.some((r) => r.login === viewerLogin) ?? false : false;
+
   return (
-    <div className="lp-row" onClick={() => onSelect(item)}>
+    <div
+      className="lp-row"
+      onClick={() => onSelect(item)}
+      style={waitingOnMe ? { background: 'rgba(203, 166, 247, 0.06)', borderLeft: '2px solid #cba6f7' } : undefined}
+    >
       {/* Age */}
-      <span className="lp-age">{age}</span>
+      <span className="lp-age" style={isStale ? { color: '#f9e2af' } : undefined}>
+        {age}
+        {isStale && (
+          <span style={{ marginLeft: 3, fontSize: 9, fontWeight: 700, color: '#f9e2af', verticalAlign: 'middle' }} title={`Stale — no activity for ${Math.floor(daysSinceUpdate)}d`}>●</span>
+        )}
+      </span>
 
       {/* Status icons */}
       <span className="lp-status-icons">
@@ -272,6 +285,7 @@ export function LaunchpadView({ items, linkedIssuePRs = [], viewerLogin, onSelec
               group={group}
               meta={meta}
               items={groupItems}
+              viewerLogin={viewerLogin}
               onSelect={onSelect}
               onOpenUrl={onOpenUrl}
             />
@@ -283,11 +297,12 @@ export function LaunchpadView({ items, linkedIssuePRs = [], viewerLogin, onSelec
 }
 
 function LaunchpadGroup({
-  group, meta, items, onSelect, onOpenUrl,
+  group, meta, items, viewerLogin, onSelect, onOpenUrl,
 }: {
   group: string;
   meta: { color: string; icon: string; desc: string };
   items: BoardItem[];
+  viewerLogin: string;
   onSelect: (i: BoardItem) => void;
   onOpenUrl: (url: string) => void;
 }) {
@@ -307,7 +322,7 @@ function LaunchpadGroup({
       {open && (
         <div className="lp-group-rows">
           {items.map((item) => (
-            <LaunchpadRow key={item.id} item={item} onSelect={onSelect} onOpenUrl={onOpenUrl} />
+            <LaunchpadRow key={item.id} item={item} viewerLogin={viewerLogin} onSelect={onSelect} onOpenUrl={onOpenUrl} />
           ))}
         </div>
       )}

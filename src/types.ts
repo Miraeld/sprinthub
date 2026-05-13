@@ -132,7 +132,11 @@ export type ExtensionMessage =
   // Phase 3
   | { type: 'standup'; markdown: string }
   | { type: 'metadataUpdated'; itemId: string; labels: GHLabel[]; assignees: GHUser[] }
-  | { type: 'repoLabels'; owner: string; repo: string; labels: GHLabel[] };
+  | { type: 'repoLabels'; owner: string; repo: string; labels: GHLabel[] }
+  // v2 extras
+  | { type: 'prReadied'; itemId: string }
+  | { type: 'prMerged'; itemId: string }
+  | { type: 'codeowners'; owner: string; repo: string; entries: Array<{ pattern: string; owners: string[] }> };
 
 // Messages: webview → extension
 export type WebviewMessage =
@@ -149,4 +153,8 @@ export type WebviewMessage =
   // Phase 3
   | { type: 'generateStandup'; viewerLogin: string }
   | { type: 'updateMetadata'; itemId: string; owner: string; repo: string; issueNumber: number; labels?: string[]; assignees?: string[] }
-  | { type: 'fetchRepoLabels'; owner: string; repo: string };
+  | { type: 'fetchRepoLabels'; owner: string; repo: string }
+  // v2 extras
+  | { type: 'convertDraftToReady'; itemId: string; owner: string; repo: string; prNumber: number }
+  | { type: 'mergePR'; itemId: string; owner: string; repo: string; prNumber: number; mergeMethod: 'merge' | 'squash' | 'rebase' }
+  | { type: 'fetchCodeowners'; owner: string; repo: string };
