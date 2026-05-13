@@ -160,6 +160,8 @@ function LinkedPRSection({ prs, onOpenUrl }: { prs: LinkedPR[] | null; onOpenUrl
 }
 
 // Phase 1: PR Files Section
+const PR_FILES_COLLAPSE_THRESHOLD = 6;
+
 function PRFilesSection({
   files,
   item,
@@ -169,6 +171,8 @@ function PRFilesSection({
   item: BoardItem;
   onOpenPRFile: (owner: string, repo: string, prNumber: number, filename: string, patch?: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   if (files === null) {
     return (
       <div style={{ fontSize: 11, color: '#45475a', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -194,25 +198,57 @@ function PRFilesSection({
     return 'M';
   };
 
+  const shouldCollapse = files.length > PR_FILES_COLLAPSE_THRESHOLD;
+  const visibleFiles = shouldCollapse && !expanded ? files.slice(0, PR_FILES_COLLAPSE_THRESHOLD) : files;
+  const hiddenCount = files.length - PR_FILES_COLLAPSE_THRESHOLD;
+
   return (
     <div className="pr-files-list">
-      {files.map((file, i) => (
-        <div
-          key={i}
-          className="pr-file-row"
-          onClick={() => onOpenPRFile(item.repositoryOwner, item.repository, item.number, file.filename, file.patch)}
-          title={`Open ${file.filename} in editor`}
+      <div style={{ position: 'relative' }}>
+        {visibleFiles.map((file, i) => (
+          <div
+            key={i}
+            className="pr-file-row"
+            onClick={() => onOpenPRFile(item.repositoryOwner, item.repository, item.number, file.filename, file.patch)}
+            title={`Open ${file.filename} in editor`}
+          >
+            <span className="pr-file-status" style={{ color: statusColor(file.status) }}>
+              {statusLabel(file.status)}
+            </span>
+            <span className="pr-file-name">{file.filename}</span>
+            <span className="pr-file-diff">
+              {file.additions > 0 && <span style={{ color: '#a6e3a1' }}>+{file.additions}</span>}
+              {file.deletions > 0 && <span style={{ color: '#f38ba8' }}>−{file.deletions}</span>}
+            </span>
+          </div>
+        ))}
+        {/* Fade overlay when collapsed */}
+        {shouldCollapse && !expanded && (
+          <div style={{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            height: 40,
+            background: 'linear-gradient(to bottom, transparent, #16162a)',
+            pointerEvents: 'none',
+          }} />
+        )}
+      </div>
+
+      {shouldCollapse && (
+        <button
+          className="pr-files-toggle"
+          onClick={() => setExpanded((v) => !v)}
         >
-          <span className="pr-file-status" style={{ color: statusColor(file.status) }}>
-            {statusLabel(file.status)}
-          </span>
-          <span className="pr-file-name">{file.filename}</span>
-          <span className="pr-file-diff">
-            {file.additions > 0 && <span style={{ color: '#a6e3a1' }}>+{file.additions}</span>}
-            {file.deletions > 0 && <span style={{ color: '#f38ba8' }}>−{file.deletions}</span>}
-          </span>
-        </div>
-      ))}
+          <svg
+            width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+          >
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+          {expanded ? 'Show less' : `See ${hiddenCount} more file${hiddenCount > 1 ? 's' : ''}…`}
+        </button>
+      )}
     </div>
   );
 }
