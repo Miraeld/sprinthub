@@ -1131,7 +1131,7 @@ const STYLES = `
 
   /* ─── Launchpad view ──────────────────────── */
   .lp-wrap {
-    padding: 8px 0 16px;
+    padding: 8px 12px 16px;
     overflow-x: auto;
     min-width: 0;
   }
@@ -1140,7 +1140,7 @@ const STYLES = `
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 12px 10px;
+    padding: 4px 0 10px;
     flex-wrap: wrap;
   }
 
@@ -1194,7 +1194,7 @@ const STYLES = `
     grid-template-columns: 36px 52px 1fr 80px 30px 80px 140px;
     gap: 4px;
     align-items: center;
-    padding: 0 12px 6px;
+    padding: 0 0 6px;
     border-bottom: 1px solid #2a2a3d;
     color: #45475a;
     font-size: 10px;
@@ -1204,7 +1204,10 @@ const STYLES = `
   }
 
   .lp-group {
-    margin-bottom: 2px;
+    border: 1px solid #2a2a3d;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
   }
 
   .lp-group-header {
@@ -1235,9 +1238,7 @@ const STYLES = `
     flex: 1;
   }
 
-  .lp-group-rows {
-    border-bottom: 1px solid #2a2a3d;
-  }
+  .lp-group-rows {}
 
   .lp-row {
     display: grid;
@@ -1844,6 +1845,7 @@ const STYLES = `
     background: #e6e9ef;
     border: 1px solid #bcc0cc;
     box-shadow: 0 1px 4px rgba(76,79,105,0.06);
+    border-radius: 10px;
   }
   .light-theme .lp-group-header {
     background: #e6e9ef;
