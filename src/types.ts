@@ -93,6 +93,30 @@ export interface RunwayConfig {
   colorBlind: boolean;
 }
 
+// Phase 1 — File-level deep linking
+export interface PRFile {
+  filename: string;
+  patch?: string;
+  additions: number;
+  deletions: number;
+  status: string; // added | modified | removed | renamed | copied
+}
+
+// Phase 2 — Hotspot conflict detection
+export interface ConflictThreat {
+  filename: string;
+  prNumber: number;
+  prTitle: string;
+  prAuthor: string;
+  prUrl: string;
+}
+
+// Phase 3 — Available repo labels for metadata editor
+export interface RepoLabel {
+  name: string;
+  color: string;
+}
+
 // Messages: extension → webview
 export type ExtensionMessage =
   | { type: 'loading' }
@@ -100,7 +124,19 @@ export type ExtensionMessage =
   | { type: 'error'; message: string }
   | { type: 'config'; payload: RunwayConfig }
   | { type: 'linkedPRs'; itemId: string; prs: LinkedPR[] }
-  | { type: 'itemBody'; itemId: string; body: string };
+  | { type: 'itemBody'; itemId: string; body: string }
+  // Phase 1
+  | { type: 'prFiles'; prKey: string; files: PRFile[] }
+  // Phase 2
+  | { type: 'conflictThreats'; threats: ConflictThreat[] }
+  // Phase 3
+  | { type: 'standup'; markdown: string }
+  | { type: 'metadataUpdated'; itemId: string; labels: GHLabel[]; assignees: GHUser[] }
+  | { type: 'repoLabels'; owner: string; repo: string; labels: GHLabel[] }
+  // v2 extras
+  | { type: 'prReadied'; itemId: string }
+  | { type: 'prMerged'; itemId: string }
+  | { type: 'codeowners'; owner: string; repo: string; entries: Array<{ pattern: string; owners: string[] }> };
 
 // Messages: webview → extension
 export type WebviewMessage =
@@ -109,4 +145,16 @@ export type WebviewMessage =
   | { type: 'getConfig' }
   | { type: 'updateConfig'; payload: RunwayConfig }
   | { type: 'fetchLinkedPRs'; itemId: string; owner: string; repo: string; issueNumber: number }
-  | { type: 'fetchBody'; itemId: string; owner: string; repo: string; number: number; isIssue: boolean };
+  | { type: 'fetchBody'; itemId: string; owner: string; repo: string; number: number; isIssue: boolean }
+  // Phase 1
+  | { type: 'workOnThis'; branchName: string; owner: string; repo: string }
+  | { type: 'fetchPRFiles'; prKey: string; owner: string; repo: string; prNumber: number }
+  | { type: 'openPRFile'; owner: string; repo: string; prNumber: number; filename: string; patch?: string }
+  // Phase 3
+  | { type: 'generateStandup'; viewerLogin: string }
+  | { type: 'updateMetadata'; itemId: string; owner: string; repo: string; issueNumber: number; labels?: string[]; assignees?: string[] }
+  | { type: 'fetchRepoLabels'; owner: string; repo: string }
+  // v2 extras
+  | { type: 'convertDraftToReady'; itemId: string; owner: string; repo: string; prNumber: number }
+  | { type: 'mergePR'; itemId: string; owner: string; repo: string; prNumber: number; mergeMethod: 'merge' | 'squash' | 'rebase' }
+  | { type: 'fetchCodeowners'; owner: string; repo: string };

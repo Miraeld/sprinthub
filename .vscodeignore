@@ -8,3 +8,10 @@ esbuild.js
 tsconfig*.json
 node_modules/**
 out/**.js.map
+.claude/**
+.codacy/**
+.github/**
+*.pdf
+*.md
+!README.md
+package-lock.json
