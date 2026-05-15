@@ -32,7 +32,9 @@
     "Visualization",
     "SCM Providers"
   ],
-  "engines": { "vscode": "^1.85.0" },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -97,7 +99,10 @@
         },
         "sprinthub.ownerType": {
           "type": "string",
-          "enum": ["organization", "user"],
+          "enum": [
+            "organization",
+            "user"
+          ],
           "default": "organization",
           "description": "Whether the owner is an organization or a user"
         },
@@ -118,7 +123,10 @@
         },
         "sprinthub.theme": {
           "type": "string",
-          "enum": ["dark", "light"],
+          "enum": [
+            "dark",
+            "light"
+          ],
           "default": "dark",
           "description": "UI theme: dark or light"
         },
@@ -138,6 +146,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
@@ -153,6 +162,7 @@
   },
   "dependencies": {
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "tailwindcss": "^4.3.0"
   }
 }

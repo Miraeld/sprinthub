@@ -1,3 +1,9 @@
+@import "tailwindcss";
+
+/* Scan all webview TSX/TS files for utility class usage */
+@source "./**/*.tsx";
+@source "./**/*.ts";
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {

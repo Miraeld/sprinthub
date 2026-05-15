@@ -1,7 +1,11 @@
 const esbuild = require('esbuild');
+const { spawn, spawnSync } = require('child_process');
 
 const isProd = process.argv.includes('--production');
 const isWatch = process.argv.includes('--watch');
+
+const TW_CLI = 'node_modules/.bin/tailwindcss';
+const TW_ARGS = ['-i', 'webview-ui/styles.css', '-o', 'out/styles.css'];
 
 const extensionConfig = {
   entryPoints: ['src/extension.ts'],
@@ -29,28 +33,24 @@ const webviewConfig = {
   },
 };
 
-const cssConfig = {
-  entryPoints: ['webview-ui/styles.css'],
-  bundle: true,
-  outfile: 'out/styles.css',
-  minify: isProd,
-};
-
 async function main() {
   if (isWatch) {
-    const [extCtx, webCtx, cssCtx] = await Promise.all([
+    // Tailwind in watch mode runs as a parallel process
+    spawn(TW_CLI, [...TW_ARGS, '--watch'], { stdio: 'inherit' });
+
+    const [extCtx, webCtx] = await Promise.all([
       esbuild.context(extensionConfig),
       esbuild.context(webviewConfig),
-      esbuild.context(cssConfig),
     ]);
-    await Promise.all([extCtx.watch(), webCtx.watch(), cssCtx.watch()]);
+    await Promise.all([extCtx.watch(), webCtx.watch()]);
     console.log('Watching for changes...');
   } else {
     await Promise.all([
       esbuild.build(extensionConfig),
       esbuild.build(webviewConfig),
-      esbuild.build(cssConfig),
     ]);
+    // Tailwind processes the CSS after JS is built
+    spawnSync(TW_CLI, [...TW_ARGS, ...(isProd ? ['--minify'] : [])], { stdio: 'inherit' });
     console.log('Build complete.');
   }
 }
