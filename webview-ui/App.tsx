@@ -402,12 +402,16 @@ export function App() {
 
   return (
     <>
-      {/* SVG glass refraction filter — referenced via CSS filter: url(#glass-distort) */}
+      {/* SVG filters — glass-distort for panels, wave-distort for background wave lines */}
       <svg className="glass-filter-svg" aria-hidden="true">
         <defs>
           <filter id="glass-distort" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="linearRGB">
             <feTurbulence type="fractalNoise" baseFrequency="0.012 0.008" numOctaves="4" seed="5" result="noise" />
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <filter id="wave-distort" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="linearRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.003 0.0015" numOctaves="2" seed="7" result="waveNoise" />
+            <feDisplacementMap in="SourceGraphic" in2="waveNoise" scale="80" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
