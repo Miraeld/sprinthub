@@ -29,18 +29,27 @@ const webviewConfig = {
   },
 };
 
+const cssConfig = {
+  entryPoints: ['webview-ui/styles.css'],
+  bundle: true,
+  outfile: 'out/styles.css',
+  minify: isProd,
+};
+
 async function main() {
   if (isWatch) {
-    const [extCtx, webCtx] = await Promise.all([
+    const [extCtx, webCtx, cssCtx] = await Promise.all([
       esbuild.context(extensionConfig),
       esbuild.context(webviewConfig),
+      esbuild.context(cssConfig),
     ]);
-    await Promise.all([extCtx.watch(), webCtx.watch()]);
+    await Promise.all([extCtx.watch(), webCtx.watch(), cssCtx.watch()]);
     console.log('Watching for changes...');
   } else {
     await Promise.all([
       esbuild.build(extensionConfig),
       esbuild.build(webviewConfig),
+      esbuild.build(cssConfig),
     ]);
     console.log('Build complete.');
   }

@@ -553,6 +553,9 @@ export class SprintHubPanel {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri, 'out', 'webview.js')
     );
+    const stylesUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, 'out', 'styles.css')
+    );
     const nonce = getNonce();
 
     return /* html */ `<!DOCTYPE html>
@@ -566,6 +569,7 @@ export class SprintHubPanel {
              script-src 'nonce-${nonce}';
              style-src ${webview.cspSource} 'unsafe-inline';">
   <title>SprintHub</title>
+  <link rel="stylesheet" href="${stylesUri}">
 </head>
 <body>
   <div id="root"></div>
