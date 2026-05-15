@@ -2041,17 +2041,31 @@
     background: rgba(0,0,0,0.05) !important;
   }
   .liquid-glass .detail-panel {
-    backdrop-filter: blur(64px) saturate(220%) brightness(0.92) !important;
-    -webkit-backdrop-filter: blur(64px) saturate(220%) brightness(0.92) !important;
+    backdrop-filter: blur(80px) saturate(200%) brightness(0.88) !important;
+    -webkit-backdrop-filter: blur(80px) saturate(200%) brightness(0.88) !important;
     /* Gradient left border: bright top → dark bottom */
     border-left: 2px solid transparent !important;
     background:
-      linear-gradient(rgba(8,8,22,0.38), rgba(8,8,22,0.38)) padding-box,
+      linear-gradient(rgba(8,8,22,0.72), rgba(8,8,22,0.72)) padding-box,
       linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.06) 50%, rgba(0,0,0,0.16) 100%) border-box !important;
     box-shadow:
       -20px 0 80px rgba(0,0,0,0.45),
       inset 0 1px 0 rgba(255,255,255,0.12) !important;
   }
+  /* Detail panel: brighten muted text that disappears on glass */
+  .liquid-glass .detail-num { color: #8898cc; }
+  .liquid-glass .detail-close-btn { color: #8898cc; border-color: rgba(255,255,255,0.12); }
+  .liquid-glass .detail-close-btn:hover { background: rgba(243,139,168,0.15); color: #f38ba8; border-color: rgba(243,139,168,0.35); }
+  .liquid-glass .detail-header { border-bottom-color: rgba(255,255,255,0.08); }
+  .liquid-glass .detail-branch { color: #8898cc; background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.10); }
+  .liquid-glass .detail-section-label { color: #8898cc; }
+  .liquid-glass .detail-meta-label { color: #7888bc; }
+  .liquid-glass .detail-meta-value { color: #c8d4f4; }
+  .liquid-glass .detail-body-text { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); color: #c8d4f4; }
+  .liquid-glass .detail-body-empty { color: #6878a8; }
+  .liquid-glass .detail-divider { background: rgba(255,255,255,0.07); }
+  .liquid-glass .detail-gh-btn { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: #c8d4f4; }
+  .liquid-glass .detail-gh-btn:hover { border-color: #89b4fa; color: #89b4fa; background: rgba(137,180,250,0.10); }
 
   /* Standup modal */
   .liquid-glass .standup-overlay {
