@@ -1763,9 +1763,79 @@
   /* ═══════════════════════════════════════════
      Liquid Glass theme — deep refractive glass
      ═══════════════════════════════════════════ */
-  body.liquid-glass,
+
+  @keyframes bgShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes waveFloat {
+    0%   { transform: translateY(0) scaleX(1); }
+    50%  { transform: translateY(-18px) scaleX(1.04); }
+    100% { transform: translateY(0) scaleX(1); }
+  }
+
+  body.liquid-glass {
+    background:
+      radial-gradient(ellipse at 15% 35%, #1a0a3a 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 65%, #0a0a2a 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 10%, #0d1030 0%, transparent 60%),
+      #06060f;
+    background-size: 200% 200%;
+    animation: bgShift 18s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Animated prismatic wave layer */
+  body.liquid-glass::before {
+    content: '';
+    position: fixed;
+    inset: -10%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 40% at 20% 60%, rgba(137,180,250,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 30%, rgba(203,166,247,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 100% 30% at 50% 90%, rgba(116,199,236,0.05) 0%, transparent 55%);
+    animation: waveFloat 12s ease-in-out infinite;
+    filter: blur(40px);
+  }
+
+  /* Hidden SVG filter container — injected by App.tsx, referenced via url(#glass-distort) */
+  .glass-filter-svg {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* Apply displacement only to the wave pseudo-element so the background
+     looks organically fluid while card content stays sharp */
+  body.liquid-glass::before {
+    filter: url(#glass-distort);
+  }
+
+  /* Bump the specular rim on cards for more depth */
+  .liquid-glass .item-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      rgba(255,255,255,0.09) 0%,
+      rgba(137,180,250,0.04) 30%,
+      transparent 60%
+    );
+    pointer-events: none;
+  }
+
   #root.liquid-glass {
-    background: radial-gradient(ellipse at 20% 50%, #0d0d22 0%, #06060f 60%, #0a0814 100%);
+    position: relative;
+    z-index: 1;
   }
 
   /* Chrome bars */
