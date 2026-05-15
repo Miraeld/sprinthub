@@ -2254,10 +2254,14 @@ export function App() {
           setData(msg.payload);
           setState('data');
           setIsRefreshing(false);
-          // Auto-select the latest sprint (sprints are sorted numeric desc so [0] is the highest)
-          if (msg.payload.sprints.length > 0) {
-            setSprintFilter((prev) => prev ?? msg.payload.sprints[0]);
-          }
+          // Validate the restored sprint filter against the incoming sprint list.
+          // A stale value (different project or archived sprint) is reset to the
+          // latest sprint so the board never silently hides all cards.
+          setSprintFilter((prev) => {
+            if (msg.payload.sprints.length === 0) return null;
+            if (prev && msg.payload.sprints.includes(prev)) return prev;
+            return msg.payload.sprints[0];
+          });
           break;
         case 'error':
           setErrorMsg(msg.message);
