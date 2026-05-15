@@ -3,6 +3,7 @@ import * as cp from 'child_process';
 import * as util from 'util';
 import {
   fetchProjectData,
+  fetchLinkedPRsForBoard,
   fetchLinkedPRChecks,
   fetchItemBody,
   fetchPRFiles,
@@ -259,7 +260,9 @@ export class SprintHubPanel {
       this._lastData = data;
       this._post({ type: 'data', payload: data });
       this._updateStatusBar(data);
-      // Phase 2: run conflict check in background after data loads
+      // Fetch linked PRs and conflict threats in background so the board
+      // appears immediately without waiting for the extra API calls
+      void this._fetchLinkedPRsBackground(data.groups);
       void this._checkConflicts(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -347,6 +350,17 @@ export class SprintHubPanel {
     }
     const selection = new vscode.Range(line, 0, line, 0);
     await vscode.window.showTextDocument(doc, { selection });
+  }
+
+  // ─── Linked PRs background fetch ───────────────────────────────────────────
+
+  private async _fetchLinkedPRsBackground(groups: RunwayData['groups']) {
+    try {
+      const prs = await fetchLinkedPRsForBoard(groups);
+      this._post({ type: 'linkedIssuePRs', prs });
+    } catch {
+      // best-effort — Dashboard just shows no linked PRs
+    }
   }
 
   // ─── Phase 2: Hotspot Conflict Monitor ─────────────────────────────────────

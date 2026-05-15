@@ -162,6 +162,7 @@ export type ExtensionMessage =
   | { type: 'prFiles'; prKey: string; files: PRFile[] }
   // Phase 2
   | { type: 'conflictThreats'; threats: ConflictThreat[] }
+  | { type: 'linkedIssuePRs'; prs: BoardItem[] }
   // Phase 3
   | { type: 'standup'; data: StandupData; markdown: string }
   | { type: 'metadataUpdated'; itemId: string; labels: GHLabel[]; assignees: GHUser[] }

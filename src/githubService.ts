@@ -518,11 +518,9 @@ export async function fetchProjectData(
     }
   } while (cursor !== null);
 
-  // Group items by column; also build a map of issue number -> BoardItem for linking
+  // Group items by column
   const groups: Record<string, BoardItem[]> = {};
   const sprintsSet = new Set<string>();
-  // key: `${owner}/${repo}` -> Map<issueNumber, BoardItem>
-  const issueByRepo = new Map<string, Map<number, BoardItem>>();
 
   for (const node of allNodes) {
     const column = extractColumn(node, statusFieldName);
@@ -534,13 +532,6 @@ export async function fetchProjectData(
     }
     groups[column].push(item);
     if (item.sprint) sprintsSet.add(item.sprint);
-
-    // Track board issues by repo for later PR linking
-    if (item.type === 'ISSUE' && item.repositoryOwner && item.repository) {
-      const repoKey = `${item.repositoryOwner}/${item.repository}`;
-      if (!issueByRepo.has(repoKey)) issueByRepo.set(repoKey, new Map());
-      issueByRepo.get(repoKey)!.set(item.number, item);
-    }
   }
 
   // Build ordered column list — case-insensitive so "Ready for review" matches "Ready For Review"
@@ -556,9 +547,8 @@ export async function fetchProjectData(
   const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
   const sprints = Array.from(sprintsSet).sort((a, b) => collator.compare(b, a));
 
-  // Fetch open PRs from each repo that has board issues, match by closingIssuesReferences
-  const linkedIssuePRs = await fetchLinkedPRsFromRepos(token, issueByRepo, groups);
-
+  // linkedIssuePRs are fetched separately via fetchLinkedPRsForBoard to avoid
+  // blocking the initial board render
   return {
     projectTitle,
     columns,
@@ -567,9 +557,29 @@ export async function fetchProjectData(
     lastUpdated: new Date().toISOString(),
     totalCount,
     viewerLogin,
-    linkedIssuePRs,
+    linkedIssuePRs: [],
     rateLimit: lastRateLimit,
   };
+}
+
+/**
+ * Fetches linked PRs for a board after the initial data is already rendered.
+ * Re-derives the issueByRepo index from the groups returned by fetchProjectData.
+ */
+export async function fetchLinkedPRsForBoard(groups: Record<string, BoardItem[]>): Promise<BoardItem[]> {
+  const token = await getToken();
+  const issueByRepo = new Map<string, Map<number, BoardItem>>();
+  for (const items of Object.values(groups)) {
+    for (const item of items) {
+      if (item.type === 'ISSUE' && item.repositoryOwner && item.repository) {
+        const repoKey = `${item.repositoryOwner}/${item.repository}`;
+        if (!issueByRepo.has(repoKey)) issueByRepo.set(repoKey, new Map());
+        issueByRepo.get(repoKey)!.set(item.number, item);
+      }
+    }
+  }
+  if (!issueByRepo.size) return [];
+  return fetchLinkedPRsFromRepos(token, issueByRepo, groups);
 }
 
 // Step 1: get linked PRs via closing references + timeline cross-references
@@ -1006,10 +1016,12 @@ export async function fetchCodeowners(
     return null;
   }
 
-  const content =
-    (await tryPath('.github/CODEOWNERS')) ??
-    (await tryPath('CODEOWNERS')) ??
-    (await tryPath('docs/CODEOWNERS'));
+  const [a, b, c] = await Promise.all([
+    tryPath('.github/CODEOWNERS'),
+    tryPath('CODEOWNERS'),
+    tryPath('docs/CODEOWNERS'),
+  ]);
+  const content = a ?? b ?? c;
 
   if (!content) return [];
 

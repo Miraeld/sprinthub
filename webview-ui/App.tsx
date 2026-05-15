@@ -271,6 +271,9 @@ export function App() {
         case 'prFiles':
           setPrFiles(msg.files);
           break;
+        case 'linkedIssuePRs':
+          setData((prev) => prev ? { ...prev, linkedIssuePRs: msg.prs } : null);
+          break;
         // Phase 2: conflict threats
         case 'conflictThreats':
           setConflictThreats(msg.threats);
