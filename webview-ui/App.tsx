@@ -254,6 +254,7 @@ export function App() {
         // Phase 3: repo labels loaded
         case 'repoLabels': {
           const cacheKey = `${msg.owner}/${msg.repo}`;
+          labelsInFlight.current.delete(cacheKey);
           setRepoLabelsCache((prev) => new Map(prev).set(cacheKey, msg.labels));
           break;
         }
@@ -608,6 +609,27 @@ export function App() {
   const handleFetchRepoLabels = useCallback((owner: string, repo: string) => {
     vscodeApi.postMessage({ type: 'fetchRepoLabels', owner, repo });
   }, []);
+
+  // Tracks in-flight label fetches to avoid duplicate requests when the board
+  // refreshes before a pending response lands (cleared when the response arrives).
+  const labelsInFlight = React.useRef<Set<string>>(new Set());
+
+  // §1.8: Preload labels for all repos visible on the board after each data load.
+  // Fires in parallel for repos not yet in the cache so the label editor opens instantly.
+  useEffect(() => {
+    if (!data) return;
+    const allItems = [...Object.values(data.groups).flat(), ...(data.linkedIssuePRs ?? [])];
+    const seen = new Set<string>();
+    for (const item of allItems) {
+      if (!item.repositoryOwner || !item.repository) continue;
+      const key = `${item.repositoryOwner}/${item.repository}`;
+      if (seen.has(key) || repoLabelsCache.has(key) || labelsInFlight.current.has(key)) continue;
+      seen.add(key);
+      labelsInFlight.current.add(key);
+      vscodeApi.postMessage({ type: 'fetchRepoLabels', owner: item.repositoryOwner, repo: item.repository });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   // v2: convert draft to ready
   const handleConvertDraftToReady = useCallback((itemId: string, owner: string, repo: string, prNumber: number) => {
