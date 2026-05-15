@@ -585,7 +585,7 @@
   }
 
   .detail-panel {
-    width: 520px;
+    width: 600px;
     max-width: 90vw;
     height: 100%;
     background: #16162a;
@@ -1776,6 +1776,13 @@
     100% { transform: translateY(0) scaleX(1); }
   }
 
+  @keyframes waveDrift {
+    0%   { transform: translateY(0) translateX(0) scaleX(1); }
+    33%  { transform: translateY(-14px) translateX(10px) scaleX(1.03); }
+    66%  { transform: translateY(10px) translateX(-8px) scaleX(0.98); }
+    100% { transform: translateY(0) translateX(0) scaleX(1); }
+  }
+
   body.liquid-glass {
     background:
       radial-gradient(ellipse at 15% 35%, #1a0a3a 0%, transparent 50%),
@@ -1803,6 +1810,23 @@
     /* blur first so the displacement shifts soft blobs; combined so blur
        is never silently dropped by a duplicate rule */
     filter: blur(40px) url(#glass-distort);
+  }
+
+  /* Fixed decorative wave + light streak layer */
+  body.liquid-glass::after {
+    content: '';
+    position: fixed;
+    inset: -20%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 160% 14% at 50% 18%, rgba(137,180,250,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 80%  22% at  8% 52%, rgba(203,166,247,0.055) 0%, transparent 65%),
+      radial-gradient(ellipse 180% 10% at 60% 68%, rgba(116,199,236,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 90%  18% at 92% 82%, rgba(180,190,254,0.045) 0%, transparent 55%),
+      radial-gradient(ellipse 120% 8%  at 30% 88%, rgba(137,180,250,0.04) 0%, transparent 60%);
+    animation: waveDrift 24s ease-in-out infinite;
+    filter: blur(18px);
   }
 
   /* Hidden SVG filter container — injected by App.tsx, referenced via url(#glass-distort) */
@@ -1941,18 +1965,19 @@
 
   /* Detail side panel */
   .liquid-glass .detail-overlay {
-    backdrop-filter: blur(20px) saturate(200%) brightness(0.8) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(200%) brightness(0.8) !important;
-    background: rgba(0,0,0,0.12) !important;
+    backdrop-filter: blur(3px) saturate(140%) brightness(0.97) !important;
+    -webkit-backdrop-filter: blur(3px) saturate(140%) brightness(0.97) !important;
+    background: rgba(0,0,0,0.05) !important;
   }
   .liquid-glass .detail-panel {
-    background: rgba(6, 6, 18, 0.58) !important;
-    backdrop-filter: blur(80px) saturate(240%) brightness(0.85) !important;
-    -webkit-backdrop-filter: blur(80px) saturate(240%) brightness(0.85) !important;
-    border-left: 1px solid rgba(255,255,255,0.12) !important;
+    background: rgba(8, 8, 22, 0.38) !important;
+    backdrop-filter: blur(64px) saturate(220%) brightness(0.92) !important;
+    -webkit-backdrop-filter: blur(64px) saturate(220%) brightness(0.92) !important;
+    border-left: 1px solid rgba(255,255,255,0.14) !important;
     box-shadow:
-      -16px 0 80px rgba(0,0,0,0.55),
-      inset 1px 0 0 rgba(255,255,255,0.06) !important;
+      -20px 0 80px rgba(0,0,0,0.45),
+      inset 1px 0 0 rgba(255,255,255,0.09),
+      inset 0 1px 0 rgba(255,255,255,0.06) !important;
   }
 
   /* Standup modal */
