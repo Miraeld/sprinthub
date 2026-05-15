@@ -337,7 +337,8 @@ export function App() {
   }, [data, debouncedSearch, sprintFilter]);
 
   const filteredLinkedIssuePRs = useMemo(() => {
-    const linked = data?.linkedIssuePRs ?? [];
+    let linked = data?.linkedIssuePRs ?? [];
+    if (sprintFilter) linked = linked.filter((i) => i.sprint === sprintFilter);
     const q = debouncedSearch.toLowerCase().trim();
     if (!q) return linked;
     return linked.filter((i) =>
@@ -348,7 +349,7 @@ export function App() {
       i.repository.toLowerCase().includes(q) ||
       (i.headRefName ?? '').toLowerCase().includes(q)
     );
-  }, [data, debouncedSearch]);
+  }, [data, debouncedSearch, sprintFilter]);
 
   const counts = useMemo(() => {
     if (!data) return { all: 0, prs: 0, issues: 0 };
