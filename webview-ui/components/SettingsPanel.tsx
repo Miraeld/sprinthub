@@ -132,13 +132,13 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
                 className={`settings-toggle-btn${theme === 'dark' ? ' active' : ''}`}
                 onClick={() => setTheme('dark')}
               >
-                🌙 Dark
+                Dark
               </button>
               <button
                 className={`settings-toggle-btn${theme === 'light' ? ' active' : ''}`}
                 onClick={() => setTheme('light')}
               >
-                ☀️ Light
+                Light
               </button>
             </div>
           </div>
