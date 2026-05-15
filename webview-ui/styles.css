@@ -431,6 +431,16 @@
     text-transform: uppercase;
   }
 
+  .stale-badge {
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid #f9e2af55;
+    background: #f9e2af18;
+    color: #f9e2af;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
   /* ─── States ──────────────────────────────── */
   .center-state {
     display: flex;
