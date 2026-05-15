@@ -161,7 +161,7 @@ export function App() {
           setIsRefreshing(true);
           if (state !== 'data') setState('loading');
           break;
-        case 'data':
+        case 'data': {
           setData(msg.payload);
           setState('data');
           setIsRefreshing(false);
@@ -201,6 +201,7 @@ export function App() {
             return null;
           });
           break;
+        }
         case 'error':
           setErrorMsg(msg.message);
           setState('error');
