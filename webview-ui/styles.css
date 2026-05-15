@@ -1800,7 +1800,9 @@
       radial-gradient(ellipse 60% 50% at 80% 30%, rgba(203,166,247,0.06) 0%, transparent 60%),
       radial-gradient(ellipse 100% 30% at 50% 90%, rgba(116,199,236,0.05) 0%, transparent 55%);
     animation: waveFloat 12s ease-in-out infinite;
-    filter: blur(40px);
+    /* blur first so the displacement shifts soft blobs; combined so blur
+       is never silently dropped by a duplicate rule */
+    filter: blur(40px) url(#glass-distort);
   }
 
   /* Hidden SVG filter container — injected by App.tsx, referenced via url(#glass-distort) */
@@ -1810,12 +1812,6 @@
     height: 0;
     overflow: hidden;
     pointer-events: none;
-  }
-
-  /* Apply displacement only to the wave pseudo-element so the background
-     looks organically fluid while card content stays sharp */
-  body.liquid-glass::before {
-    filter: url(#glass-distort);
   }
 
   /* Bump the specular rim on cards for more depth */
