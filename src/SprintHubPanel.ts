@@ -255,13 +255,16 @@ export class SprintHubPanel {
         owner,
         projectNumber,
         ownerType === 'organization',
-        statusFieldName
+        statusFieldName,
+        (partial) => {
+          // Deliver each page to the webview as it arrives so the board
+          // is visible and interactive after the very first page (~100 items)
+          this._post({ type: 'data', payload: partial });
+          this._updateStatusBar(partial);
+        }
       );
+      // All pages done — kick off background enrichment with complete data
       this._lastData = data;
-      this._post({ type: 'data', payload: data });
-      this._updateStatusBar(data);
-      // Fetch linked PRs and conflict threats in background so the board
-      // appears immediately without waiting for the extra API calls
       void this._fetchLinkedPRsBackground(data.groups);
       void this._checkConflicts(data);
     } catch (err: unknown) {

@@ -473,11 +473,61 @@ async function fetchLinkedPRsFromRepos(
   return Array.from(linkedPRMap.values());
 }
 
+function buildRunwayData(
+  nodes: RawProjectNode[],
+  statusFieldName: string,
+  projectTitle: string,
+  viewerLogin: string,
+  rateLimit: RateLimit | undefined
+): RunwayData {
+  const groups: Record<string, BoardItem[]> = {};
+  const sprintsSet = new Set<string>();
+
+  for (const node of nodes) {
+    const column = extractColumn(node, statusFieldName);
+    const item = parseItem(node, column);
+    if (!item) continue;
+    if (!groups[column]) groups[column] = [];
+    groups[column].push(item);
+    if (item.sprint) sprintsSet.add(item.sprint);
+  }
+
+  const colOrderLower = COLUMN_ORDER.map((c) => c.toLowerCase());
+  const knownPresent = Object.keys(groups)
+    .filter((c) => colOrderLower.includes(c.toLowerCase()))
+    .sort((a, b) => colOrderLower.indexOf(a.toLowerCase()) - colOrderLower.indexOf(b.toLowerCase()));
+  const extras = Object.keys(groups).filter((c) => !colOrderLower.includes(c.toLowerCase()));
+  const columns = [...knownPresent, ...extras];
+
+  const totalCount = Object.values(groups).reduce((sum, items) => sum + items.length, 0);
+  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  const sprints = Array.from(sprintsSet).sort((a, b) => collator.compare(b, a));
+
+  return {
+    projectTitle,
+    columns,
+    groups,
+    sprints,
+    lastUpdated: new Date().toISOString(),
+    totalCount,
+    viewerLogin,
+    linkedIssuePRs: [],
+    rateLimit,
+  };
+}
+
+/**
+ * Fetches all project items with progressive delivery.
+ * `onPage` is called after each paginated response so the caller can render
+ * partial data immediately — the board appears after the first ~100 items
+ * rather than waiting for the full dataset to arrive.
+ */
 export async function fetchProjectData(
   owner: string,
   projectNumber: number,
   isOrg: boolean,
-  statusFieldName: string
+  statusFieldName: string,
+  onPage?: (partial: RunwayData) => void
 ): Promise<RunwayData> {
   const token = await getToken();
   const allNodes: RawProjectNode[] = [];
@@ -511,55 +561,15 @@ export async function fetchProjectData(
     projectTitle = project.title;
     allNodes.push(...project.items.nodes);
 
-    if (project.items.pageInfo.hasNextPage) {
-      cursor = project.items.pageInfo.endCursor;
-    } else {
-      cursor = null;
-    }
+    cursor = project.items.pageInfo.hasNextPage
+      ? project.items.pageInfo.endCursor
+      : null;
+
+    // Deliver partial data after each page so the board renders immediately
+    onPage?.(buildRunwayData(allNodes, statusFieldName, projectTitle, viewerLogin, lastRateLimit));
   } while (cursor !== null);
 
-  // Group items by column
-  const groups: Record<string, BoardItem[]> = {};
-  const sprintsSet = new Set<string>();
-
-  for (const node of allNodes) {
-    const column = extractColumn(node, statusFieldName);
-    const item = parseItem(node, column);
-    if (!item) continue;
-
-    if (!groups[column]) {
-      groups[column] = [];
-    }
-    groups[column].push(item);
-    if (item.sprint) sprintsSet.add(item.sprint);
-  }
-
-  // Build ordered column list — case-insensitive so "Ready for review" matches "Ready For Review"
-  const colOrderLower = COLUMN_ORDER.map((c) => c.toLowerCase());
-  const knownPresent = Object.keys(groups)
-    .filter((c) => colOrderLower.includes(c.toLowerCase()))
-    .sort((a, b) => colOrderLower.indexOf(a.toLowerCase()) - colOrderLower.indexOf(b.toLowerCase()));
-  const extras = Object.keys(groups).filter((c) => !colOrderLower.includes(c.toLowerCase()));
-  const columns = [...knownPresent, ...extras];
-
-  const totalCount = Object.values(groups).reduce((sum, items) => sum + items.length, 0);
-  // Natural sort descending (Sprint 21 first, Sprint 1 last)
-  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-  const sprints = Array.from(sprintsSet).sort((a, b) => collator.compare(b, a));
-
-  // linkedIssuePRs are fetched separately via fetchLinkedPRsForBoard to avoid
-  // blocking the initial board render
-  return {
-    projectTitle,
-    columns,
-    groups,
-    sprints,
-    lastUpdated: new Date().toISOString(),
-    totalCount,
-    viewerLogin,
-    linkedIssuePRs: [],
-    rateLimit: lastRateLimit,
-  };
+  return buildRunwayData(allNodes, statusFieldName, projectTitle, viewerLogin, lastRateLimit);
 }
 
 /**
