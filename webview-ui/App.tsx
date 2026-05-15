@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { BoardItem, ConflictThreat, ExtensionMessage, GHLabel, LinkedPR, PRFile, RunwayConfig, RunwayData } from '../src/types';
 import { ColumnGroup } from './components/ColumnGroup';
 import { DetailPanel } from './components/DetailPanel';
@@ -155,6 +155,10 @@ export function App() {
   // handleSelectItem and the stale-body useEffect both fire for the same item.
   const lastBodyFetchKey = React.useRef<string | null>(null);
 
+  // Keyboard navigation
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const keyboardFocusedIndex = useRef<number>(-1);
+
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       const msg = event.data as ExtensionMessage;
@@ -288,6 +292,91 @@ export function App() {
     vscodeApi.postMessage({ type: 'refresh' });
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const NAVIGABLE = '.item-card, .lp-row';
+
+    function getCards(): HTMLElement[] {
+      return Array.from(document.querySelectorAll<HTMLElement>(NAVIGABLE));
+    }
+
+    function setFocus(index: number) {
+      const cards = getCards();
+      if (!cards.length) return;
+      const clamped = Math.max(0, Math.min(index, cards.length - 1));
+      // Remove highlight from previous
+      document.querySelector<HTMLElement>('.keyboard-focused')?.classList.remove('keyboard-focused');
+      cards[clamped].classList.add('keyboard-focused');
+      cards[clamped].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      keyboardFocusedIndex.current = clamped;
+    }
+
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const inInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.isContentEditable;
+
+      // Cmd/Ctrl+K — focus search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      // Esc — close detail panel (handled first) or blur search
+      if (e.key === 'Escape') {
+        setDetailItem(null);
+        setLinkedPRs(null);
+        setPrFiles(null);
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        return;
+      }
+
+      // Skip R / arrow / Enter when typing in an input
+      if (inInput) return;
+
+      // R — refresh
+      if (e.key === 'r' || e.key === 'R') {
+        handleRefresh();
+        return;
+      }
+
+      // ↑/↓ — navigate cards
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const cards = getCards();
+        if (!cards.length) return;
+        const current = keyboardFocusedIndex.current;
+        const next = e.key === 'ArrowDown'
+          ? (current < cards.length - 1 ? current + 1 : 0)
+          : (current > 0 ? current - 1 : cards.length - 1);
+        setFocus(next);
+        return;
+      }
+
+      // Enter — open focused card
+      if (e.key === 'Enter') {
+        const idx = keyboardFocusedIndex.current;
+        const cards = getCards();
+        if (idx >= 0 && idx < cards.length) {
+          cards[idx].click();
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleRefresh]);
+
   const handleOpenUrl = useCallback((url: string) => {
     vscodeApi.postMessage({ type: 'openUrl', url });
   }, []);
@@ -396,6 +485,12 @@ export function App() {
       (i.headRefName ?? '').toLowerCase().includes(q)
     );
   }, [data, debouncedSearch, sprintFilter]);
+
+  // Reset keyboard focus whenever the visible card set changes (filter, search, tab, sprint)
+  useEffect(() => {
+    document.querySelector<HTMLElement>('.keyboard-focused')?.classList.remove('keyboard-focused');
+    keyboardFocusedIndex.current = -1;
+  }, [filteredGroups, tab]);
 
   const counts = useMemo(() => {
     if (!data) return { all: 0, prs: 0, issues: 0 };
@@ -737,6 +832,7 @@ export function App() {
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input
+          ref={searchInputRef}
           className="search-input"
           placeholder={tab === 'milestones' ? 'Search milestones and items…' : 'Search by title, number, author, label, branch, sprint…'}
           value={search}

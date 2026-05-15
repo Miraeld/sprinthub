@@ -279,6 +279,12 @@
     border-color: #3d3d58;
   }
 
+  .item-card.keyboard-focused,
+  .lp-row.keyboard-focused {
+    outline: 2px solid #89b4fa88;
+    outline-offset: -2px;
+  }
+
   .item-top {
     display: flex;
     align-items: flex-start;
