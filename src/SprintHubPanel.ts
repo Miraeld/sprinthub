@@ -138,7 +138,13 @@ export class SprintHubPanel {
       (e) => {
         if (e.affectsConfiguration('sprinthub')) {
           this._sendConfig();
-          this._loadData();
+          // Only reload data when a field that affects the API query changes.
+          // Cosmetic fields (liquidGlass, theme, colorBlind) and refreshInterval
+          // must not trigger a full board re-fetch.
+          const dataFields = ['owner', 'projectNumber', 'ownerType', 'statusFieldName'];
+          if (dataFields.some((f) => e.affectsConfiguration(`sprinthub.${f}`))) {
+            this._loadData();
+          }
           this._scheduleRefresh();
         }
       },
