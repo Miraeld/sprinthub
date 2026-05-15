@@ -143,6 +143,9 @@ export function App() {
   // Body cache keyed by "itemId:updatedAt" — a changed updatedAt is a cache miss,
   // so board refreshes automatically invalidate stale bodies without a full wipe.
   const itemBodyCache = React.useRef<Map<string, string>>(new Map());
+  // Tracks the last fetchBody key sent to avoid duplicate requests when
+  // handleSelectItem and the stale-body useEffect both fire for the same item.
+  const lastBodyFetchKey = React.useRef<string | null>(null);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -163,6 +166,25 @@ export function App() {
             if (msg.payload.sprints.length === 0) return null;
             if (prev && msg.payload.sprints.includes(prev)) return prev;
             return msg.payload.sprints[0];
+          });
+          // Keep the open detail panel in sync with refreshed board data.
+          // Scan groups with early exit instead of flattening to avoid
+          // unnecessary allocations on large boards.
+          setDetailItem((prev) => {
+            if (!prev) return prev;
+            for (const col of Object.values(msg.payload.groups)) {
+              const updated = col.find((i) => i.id === prev.id);
+              if (updated) {
+                // updatedAt changed → drop stale body so the useEffect below re-fetches
+                return updated.updatedAt !== prev.updatedAt
+                  ? { ...updated }
+                  : { ...updated, body: prev.body };
+              }
+            }
+            const linkedPR = (msg.payload.linkedIssuePRs ?? []).find((i) => i.id === prev.id);
+            if (linkedPR) return { ...linkedPR, body: prev.body };
+            // Item absent from the full payload — closed/merged/removed; close the panel
+            return null;
           });
           break;
         case 'error':
@@ -357,6 +379,7 @@ export function App() {
     setPrFiles(null);
 
     if (item.body === undefined && cachedBody === undefined) {
+      lastBodyFetchKey.current = `${item.id}:${item.updatedAt}`;
       vscodeApi.postMessage({
         type: 'fetchBody',
         itemId: item.id,
@@ -394,6 +417,34 @@ export function App() {
       });
     }
   }, []);
+
+  // When a board refresh drops a stale body (updatedAt changed), re-fetch it.
+  // Skips if handleSelectItem already issued the same request.
+  useEffect(() => {
+    if (!detailItem || detailItem.body !== undefined) return;
+    const key = `${detailItem.id}:${detailItem.updatedAt}`;
+    if (lastBodyFetchKey.current === key) return;
+    const cached = itemBodyCache.current.get(key);
+    if (cached !== undefined) {
+      setDetailItem((prev) =>
+        prev?.id === detailItem.id && prev.updatedAt === detailItem.updatedAt
+          ? { ...prev, body: cached }
+          : prev
+      );
+      return;
+    }
+    lastBodyFetchKey.current = key;
+    vscodeApi.postMessage({
+      type: 'fetchBody',
+      itemId: detailItem.id,
+      owner: detailItem.repositoryOwner,
+      repo: detailItem.repository,
+      number: detailItem.number,
+      isIssue: detailItem.type === 'ISSUE',
+      updatedAt: detailItem.updatedAt,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailItem?.id, detailItem?.updatedAt, detailItem?.body]);
 
   // Phase 1: open PR file in editor
   const handleOpenPRFile = useCallback((owner: string, repo: string, prNumber: number, filename: string, patch?: string) => {
