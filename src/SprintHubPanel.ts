@@ -13,6 +13,8 @@ import {
   convertDraftToReady,
   mergePR,
   fetchCodeowners,
+  fetchSettingsOwners,
+  fetchSettingsProjects,
 } from './githubService';
 import { BoardItem, ConflictThreat, ExtensionMessage, RunwayConfig, RunwayData, WebviewMessage } from './types';
 
@@ -95,7 +97,44 @@ export class SprintHubPanel {
             void this._fetchLinkedPRs(message.itemId, message.owner, message.repo, message.issueNumber);
             break;
           case 'fetchBody':
-            void this._fetchBody(message.itemId, message.owner, message.repo, message.number, message.isIssue);
+            void this._fetchBody(message.itemId, message.owner, message.repo, message.number, message.isIssue, message.updatedAt);
+            break;
+          // Phase 1: Work-On-This Engine
+          case 'workOnThis':
+            void this._workOnThis(message.branchName, message.owner, message.repo);
+            break;
+          // Phase 1: File-Level Deep Linking
+          case 'fetchPRFiles':
+            void this._fetchPRFiles(message.prKey, message.owner, message.repo, message.prNumber);
+            break;
+          case 'openPRFile':
+            void this._openPRFile(message.owner, message.repo, message.prNumber, message.filename, message.patch);
+            break;
+          // Phase 3: Standup Generator
+          case 'generateStandup':
+            void this._generateStandup(message.viewerLogin);
+            break;
+          // Phase 3: Metadata Sync
+          case 'updateMetadata':
+            void this._updateMetadata(message.itemId, message.owner, message.repo, message.issueNumber, message.labels, message.assignees);
+            break;
+          case 'fetchRepoLabels':
+            void this._fetchRepoLabels(message.owner, message.repo);
+            break;
+          case 'convertDraftToReady':
+            void this._convertDraftToReady(message.itemId, message.owner, message.repo, message.prNumber);
+            break;
+          case 'mergePR':
+            void this._mergePR(message.itemId, message.owner, message.repo, message.prNumber, message.mergeMethod);
+            break;
+          case 'fetchCodeowners':
+            void this._fetchCodeowners(message.owner, message.repo);
+            break;
+          case 'fetchSettingsOwners':
+            void this._fetchSettingsOwners();
+            break;
+          case 'fetchSettingsProjects':
+            void this._fetchSettingsProjects(message.owner, message.ownerType);
             break;
           // Phase 1: Work-On-This Engine
           case 'workOnThis':
@@ -138,7 +177,13 @@ export class SprintHubPanel {
       (e) => {
         if (e.affectsConfiguration('sprinthub')) {
           this._sendConfig();
-          this._loadData();
+          // Only reload data when a field that affects the API query changes.
+          // Cosmetic fields (liquidGlass, theme, colorBlind) and refreshInterval
+          // must not trigger a full board re-fetch.
+          const dataFields = ['owner', 'projectNumber', 'ownerType', 'statusFieldName'];
+          if (dataFields.some((f) => e.affectsConfiguration(`sprinthub.${f}`))) {
+            this._loadData();
+          }
           this._scheduleRefresh();
         }
       },
@@ -192,12 +237,14 @@ export class SprintHubPanel {
     }
   }
 
-  private async _fetchBody(itemId: string, owner: string, repo: string, number: number, isIssue: boolean) {
+  private async _fetchBody(itemId: string, owner: string, repo: string, number: number, isIssue: boolean, updatedAt: string) {
     try {
       const body = await fetchItemBody(owner, repo, number, isIssue);
-      this._post({ type: 'itemBody', itemId, body });
+      this._post({ type: 'itemBody', itemId, body, updatedAt });
     } catch {
-      this._post({ type: 'itemBody', itemId, body: '' });
+      // null signals a transient failure — the webview will not cache it so the
+      // next open will retry rather than permanently showing an empty body.
+      this._post({ type: 'itemBody', itemId, body: null, updatedAt });
     }
   }
 
@@ -543,6 +590,24 @@ export class SprintHubPanel {
     }
   }
 
+  private async _fetchSettingsOwners() {
+    try {
+      const owners = await fetchSettingsOwners();
+      this._post({ type: 'settingsOwners', owners });
+    } catch {
+      this._post({ type: 'settingsOwners', owners: [] });
+    }
+  }
+
+  private async _fetchSettingsProjects(owner: string, ownerType: 'organization' | 'user') {
+    try {
+      const projects = await fetchSettingsProjects(owner, ownerType);
+      this._post({ type: 'settingsProjects', projects });
+    } catch {
+      this._post({ type: 'settingsProjects', projects: [] });
+    }
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
 
   private _post(message: ExtensionMessage) {
@@ -552,6 +617,9 @@ export class SprintHubPanel {
   private _buildHtml(webview: vscode.Webview): string {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri, 'out', 'webview.js')
+    );
+    const stylesUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, 'out', 'styles.css')
     );
     const nonce = getNonce();
 
@@ -566,6 +634,7 @@ export class SprintHubPanel {
              script-src 'nonce-${nonce}';
              style-src ${webview.cspSource} 'unsafe-inline';">
   <title>SprintHub</title>
+  <link rel="stylesheet" href="${stylesUri}">
 </head>
 <body>
   <div id="root"></div>

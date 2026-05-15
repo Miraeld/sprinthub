@@ -1,7 +1,15 @@
 const esbuild = require('esbuild');
+const { spawn, spawnSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const isProd = process.argv.includes('--production');
 const isWatch = process.argv.includes('--watch');
+
+const TW_CLI = process.platform === 'win32'
+  ? path.join(__dirname, 'node_modules/.bin/tailwindcss.cmd')
+  : path.join(__dirname, 'node_modules/.bin/tailwindcss');
+const TW_ARGS = ['-i', 'webview-ui/styles.css', '-o', 'out/styles.css'];
 
 const extensionConfig = {
   entryPoints: ['src/extension.ts'],
@@ -30,7 +38,13 @@ const webviewConfig = {
 };
 
 async function main() {
+  fs.mkdirSync('out', { recursive: true });
+
   if (isWatch) {
+    // Tailwind in watch mode runs as a parallel process
+    const twProc = spawn(TW_CLI, [...TW_ARGS, '--watch'], { stdio: 'inherit' });
+    twProc.on('error', (err) => console.error('Tailwind watch error:', err));
+
     const [extCtx, webCtx] = await Promise.all([
       esbuild.context(extensionConfig),
       esbuild.context(webviewConfig),
@@ -42,6 +56,11 @@ async function main() {
       esbuild.build(extensionConfig),
       esbuild.build(webviewConfig),
     ]);
+    // Tailwind processes the CSS after JS is built
+    const twResult = spawnSync(TW_CLI, [...TW_ARGS, ...(isProd ? ['--minify'] : [])], { stdio: 'inherit' });
+    if (twResult.status !== 0) {
+      throw new Error(`Tailwind exited with code ${twResult.status}`);
+    }
     console.log('Build complete.');
   }
 }

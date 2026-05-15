@@ -124,7 +124,7 @@ export type ExtensionMessage =
   | { type: 'error'; message: string }
   | { type: 'config'; payload: RunwayConfig }
   | { type: 'linkedPRs'; itemId: string; prs: LinkedPR[] }
-  | { type: 'itemBody'; itemId: string; body: string }
+  | { type: 'itemBody'; itemId: string; body: string | null; updatedAt: string }
   // Phase 1
   | { type: 'prFiles'; prKey: string; files: PRFile[] }
   // Phase 2
@@ -136,7 +136,10 @@ export type ExtensionMessage =
   // v2 extras
   | { type: 'prReadied'; itemId: string }
   | { type: 'prMerged'; itemId: string }
-  | { type: 'codeowners'; owner: string; repo: string; entries: Array<{ pattern: string; owners: string[] }> };
+  | { type: 'codeowners'; owner: string; repo: string; entries: Array<{ pattern: string; owners: string[] }> }
+  // Settings pickers
+  | { type: 'settingsOwners'; owners: Array<{ login: string; ownerType: 'organization' | 'user' }> }
+  | { type: 'settingsProjects'; projects: Array<{ number: number; title: string }> };
 
 // Messages: webview → extension
 export type WebviewMessage =
@@ -145,7 +148,7 @@ export type WebviewMessage =
   | { type: 'getConfig' }
   | { type: 'updateConfig'; payload: RunwayConfig }
   | { type: 'fetchLinkedPRs'; itemId: string; owner: string; repo: string; issueNumber: number }
-  | { type: 'fetchBody'; itemId: string; owner: string; repo: string; number: number; isIssue: boolean }
+  | { type: 'fetchBody'; itemId: string; owner: string; repo: string; number: number; isIssue: boolean; updatedAt: string }
   // Phase 1
   | { type: 'workOnThis'; branchName: string; owner: string; repo: string }
   | { type: 'fetchPRFiles'; prKey: string; owner: string; repo: string; prNumber: number }
@@ -157,4 +160,7 @@ export type WebviewMessage =
   // v2 extras
   | { type: 'convertDraftToReady'; itemId: string; owner: string; repo: string; prNumber: number }
   | { type: 'mergePR'; itemId: string; owner: string; repo: string; prNumber: number; mergeMethod: 'merge' | 'squash' | 'rebase' }
-  | { type: 'fetchCodeowners'; owner: string; repo: string };
+  | { type: 'fetchCodeowners'; owner: string; repo: string }
+  // Settings pickers
+  | { type: 'fetchSettingsOwners' }
+  | { type: 'fetchSettingsProjects'; owner: string; ownerType: 'organization' | 'user' };
