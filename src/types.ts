@@ -124,7 +124,7 @@ export type ExtensionMessage =
   | { type: 'error'; message: string }
   | { type: 'config'; payload: RunwayConfig }
   | { type: 'linkedPRs'; itemId: string; prs: LinkedPR[] }
-  | { type: 'itemBody'; itemId: string; body: string }
+  | { type: 'itemBody'; itemId: string; body: string | null; updatedAt: string }
   // Phase 1
   | { type: 'prFiles'; prKey: string; files: PRFile[] }
   // Phase 2
@@ -145,7 +145,7 @@ export type WebviewMessage =
   | { type: 'getConfig' }
   | { type: 'updateConfig'; payload: RunwayConfig }
   | { type: 'fetchLinkedPRs'; itemId: string; owner: string; repo: string; issueNumber: number }
-  | { type: 'fetchBody'; itemId: string; owner: string; repo: string; number: number; isIssue: boolean }
+  | { type: 'fetchBody'; itemId: string; owner: string; repo: string; number: number; isIssue: boolean; updatedAt: string }
   // Phase 1
   | { type: 'workOnThis'; branchName: string; owner: string; repo: string }
   | { type: 'fetchPRFiles'; prKey: string; owner: string; repo: string; prNumber: number }

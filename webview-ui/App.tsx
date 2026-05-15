@@ -2233,7 +2233,8 @@ export function App() {
   const [repoLabelsCache, setRepoLabelsCache] = useState<Map<string, GHLabel[]>>(new Map());
   // v2: CODEOWNERS cache keyed by "owner/repo"
   const [codeownersCache, setCodeownersCache] = useState<Map<string, Array<{ pattern: string; owners: string[] }>>>(new Map());
-  // §1.7: issue/PR body cache keyed by itemId — avoids re-fetching on every panel open
+  // Body cache keyed by "itemId:updatedAt" — a changed updatedAt is a cache miss,
+  // so board refreshes automatically invalidate stale bodies without a full wipe.
   const itemBodyCache = React.useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -2270,8 +2271,15 @@ export function App() {
           setLinkedPRs(msg.prs);
           break;
         case 'itemBody':
-          itemBodyCache.current.set(msg.itemId, msg.body);
-          setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, body: msg.body } : prev);
+          // null = transient fetch failure; skip caching so next open retries
+          if (msg.body !== null) {
+            itemBodyCache.current.set(`${msg.itemId}:${msg.updatedAt}`, msg.body);
+          }
+          setDetailItem((prev) =>
+            prev && prev.id === msg.itemId
+              ? { ...prev, body: msg.body ?? undefined }
+              : prev
+          );
           break;
         // Phase 1: PR files
         case 'prFiles':
@@ -2428,8 +2436,10 @@ export function App() {
   }, [data, sprintFilter]);
 
   const handleSelectItem = useCallback((item: BoardItem) => {
-    // Restore body from cache if available so the panel shows content instantly
-    const cachedBody = itemBodyCache.current.get(item.id);
+    // Cache key includes updatedAt — a board refresh that changes updatedAt
+    // is automatically a cache miss, keeping bodies fresh.
+    const cacheKey = `${item.id}:${item.updatedAt}`;
+    const cachedBody = itemBodyCache.current.get(cacheKey);
     setDetailItem(cachedBody !== undefined ? { ...item, body: cachedBody } : item);
     setLinkedPRs(null);
     setPrFiles(null);
@@ -2442,6 +2452,7 @@ export function App() {
         repo: item.repository,
         number: item.number,
         isIssue: item.type === 'ISSUE',
+        updatedAt: item.updatedAt,
       });
     }
     if (item.type === 'ISSUE') {
