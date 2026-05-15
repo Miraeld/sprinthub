@@ -128,6 +128,8 @@ export function App() {
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOwners, setSettingsOwners] = useState<Array<{ login: string; ownerType: 'organization' | 'user' }> | null>(null);
+  const [settingsProjects, setSettingsProjects] = useState<Array<{ number: number; title: string }> | null>(null);
   // Phase 1: PR file deep linking
   const [prFiles, setPrFiles] = useState<PRFile[] | null>(null);
   // Phase 2: conflict threats
@@ -250,6 +252,13 @@ export function App() {
           setCodeownersCache((prev) => new Map(prev).set(coKey, msg.entries));
           break;
         }
+        // Settings pickers
+        case 'settingsOwners':
+          setSettingsOwners(msg.owners);
+          break;
+        case 'settingsProjects':
+          setSettingsProjects(msg.projects);
+          break;
       }
     };
 
@@ -900,18 +909,15 @@ export function App() {
       )}
 
       {/* Settings panel */}
-      {settingsOpen && config && (
+      {settingsOpen && (
         <SettingsPanel
-          config={config}
+          config={config ?? { owner: '', projectNumber: 0, ownerType: 'organization', statusFieldName: 'Status', refreshInterval: 5, liquidGlass: true, theme: 'dark', colorBlind: false }}
           onSave={handleSaveConfig}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
-      {settingsOpen && !config && (
-        <SettingsPanel
-          config={{ owner: '', projectNumber: 0, ownerType: 'organization', statusFieldName: 'Status', refreshInterval: 5, liquidGlass: false }}
-          onSave={handleSaveConfig}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => { setSettingsOpen(false); setSettingsOwners(null); setSettingsProjects(null); }}
+          owners={settingsOwners}
+          projects={settingsProjects}
+          onFetchOwners={() => vscodeApi.postMessage({ type: 'fetchSettingsOwners' })}
+          onFetchProjects={(owner, ownerType) => { setSettingsProjects(null); vscodeApi.postMessage({ type: 'fetchSettingsProjects', owner, ownerType }); }}
         />
       )}
     </>

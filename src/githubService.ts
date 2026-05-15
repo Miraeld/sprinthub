@@ -964,3 +964,53 @@ export async function fetchItemBody(
 
   return (isIssue ? data.repository.issue?.body : data.repository.pullRequest?.body) ?? '';
 }
+
+// ─── Settings Pickers ─────────────────────────────────────────────────────────
+
+export async function fetchSettingsOwners(): Promise<Array<{ login: string; ownerType: 'organization' | 'user' }>> {
+  const token = await getToken();
+  const data = await graphql<{
+    viewer: { login: string; organizations: { nodes: Array<{ login: string }> } };
+  }>(
+    token,
+    `query {
+      viewer {
+        login
+        organizations(first: 100) { nodes { login } }
+      }
+    }`,
+    {}
+  );
+  return [
+    { login: data.viewer.login, ownerType: 'user' },
+    ...data.viewer.organizations.nodes.map((o) => ({ login: o.login, ownerType: 'organization' as const })),
+  ];
+}
+
+export async function fetchSettingsProjects(
+  owner: string,
+  ownerType: 'organization' | 'user'
+): Promise<Array<{ number: number; title: string }>> {
+  const token = await getToken();
+  const isOrg = ownerType === 'organization';
+  const data = await graphql<{
+    org?: { projectsV2: { nodes: Array<{ number: number; title: string }> } } | null;
+    user?: { projectsV2: { nodes: Array<{ number: number; title: string }> } } | null;
+  }>(
+    token,
+    `query($login: String!, $isOrg: Boolean!) {
+      org: organization(login: $login) @include(if: $isOrg) {
+        projectsV2(first: 50, orderBy: { field: UPDATED_AT, direction: DESC }) {
+          nodes { number title }
+        }
+      }
+      user: user(login: $login) @skip(if: $isOrg) {
+        projectsV2(first: 50, orderBy: { field: UPDATED_AT, direction: DESC }) {
+          nodes { number title }
+        }
+      }
+    }`,
+    { login: owner, isOrg }
+  );
+  return (isOrg ? data.org?.projectsV2.nodes : data.user?.projectsV2.nodes) ?? [];
+}
