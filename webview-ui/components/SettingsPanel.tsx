@@ -16,7 +16,7 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
   const [statusFieldName, setStatusFieldName] = useState(config.statusFieldName);
   const [refreshInterval, setRefreshInterval] = useState(String(config.refreshInterval));
   const [liquidGlass, setLiquidGlass] = useState(config.liquidGlass ?? false);
-  const [theme] = useState<'dark' | 'light'>(config.theme ?? 'dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(config.theme ?? 'dark');
   const [colorBlind, setColorBlind] = useState(config.colorBlind ?? false);
 
   const handleSave = () => {
@@ -126,7 +126,6 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
             <span className="settings-hint">Set to 0 to disable auto-refresh</span>
           </div>
 
-          {/* Theme toggle — hidden until light theme is polished
           <div className="settings-field">
             <label className="settings-label">Theme</label>
             <div className="settings-toggle-group">
@@ -134,17 +133,16 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
                 className={`settings-toggle-btn${theme === 'dark' ? ' active' : ''}`}
                 onClick={() => setTheme('dark')}
               >
-                🌙 Dark
+                Dark
               </button>
               <button
                 className={`settings-toggle-btn${theme === 'light' ? ' active' : ''}`}
                 onClick={() => setTheme('light')}
               >
-                ☀️ Light
+                Light
               </button>
             </div>
           </div>
-          */}
 
           <div className="settings-field settings-field-row">
             <label className="settings-toggle-label" htmlFor="liquidGlassToggle">
