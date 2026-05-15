@@ -134,10 +134,33 @@ function BranchIcon() {
   );
 }
 
+// ── Quality flags (card-level subset, no body/files needed) ──────────────────
+
+interface CardQualityFlag {
+  label: string;
+  color: string;
+}
+
+const LARGE_PR_THRESHOLD = 500;
+
+function computeCardQualityFlags(item: BoardItem): CardQualityFlag[] {
+  if (item.type !== 'PULL_REQUEST') return [];
+  const flags: CardQualityFlag[] = [];
+  const totalLines = (item.additions ?? 0) + (item.deletions ?? 0);
+  if (totalLines > LARGE_PR_THRESHOLD) {
+    flags.push({ label: `Large · ${totalLines} lines`, color: '#f38ba8' });
+  }
+  if (!item.reviewRequests?.length && !item.reviews?.length) {
+    flags.push({ label: 'No reviewers', color: '#fab387' });
+  }
+  return flags.slice(0, 2);
+}
+
 // ── Main component ────────────────────────────────────────
 
 export function ItemCard({ item, onSelect, onOpenUrl }: Props) {
   const isPR = item.type === 'PULL_REQUEST';
+  const qualityFlags = computeCardQualityFlags(item);
 
   return (
     <div className="item-card" onClick={() => onSelect(item)}>
@@ -192,6 +215,18 @@ export function ItemCard({ item, onSelect, onOpenUrl }: Props) {
                 </span>
               );
             })}
+
+            {/* Quality flag chips (PR only) */}
+            {qualityFlags.map((f) => (
+              <span
+                key={f.label}
+                className="card-quality-flag"
+                style={{ color: f.color, borderColor: f.color + '55', background: f.color + '18' }}
+                title={f.label}
+              >
+                {f.label}
+              </span>
+            ))}
 
             {/* Meta: right side */}
             <span className="item-meta">
