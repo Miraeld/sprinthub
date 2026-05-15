@@ -2209,6 +2209,15 @@ function renderStandupMarkdown(md: string, onOpenUrl: (url: string) => void): Re
 
 // ──────────────────────────────────────────────────────────────────────────────
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 export function App() {
   const [state, setState] = useState<'loading' | 'error' | 'data'>('loading');
   const [data, setData] = useState<RunwayData | null>(null);
@@ -2216,8 +2225,12 @@ export function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 150);
   const [tab, setTab] = useState<FilterTab>('dashboard');
-  const [sprintFilter, setSprintFilter] = useState<string | null>(null);
+  const [sprintFilter, setSprintFilter] = useState<string | null>(() => {
+    const saved = vscodeApi.getState() as { sprintFilter?: string | null } | undefined;
+    return saved?.sprintFilter ?? null;
+  });
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -2233,6 +2246,9 @@ export function App() {
   const [repoLabelsCache, setRepoLabelsCache] = useState<Map<string, GHLabel[]>>(new Map());
   // v2: CODEOWNERS cache keyed by "owner/repo"
   const [codeownersCache, setCodeownersCache] = useState<Map<string, Array<{ pattern: string; owners: string[] }>>>(new Map());
+  // Body cache keyed by "itemId:updatedAt" — a changed updatedAt is a cache miss,
+  // so board refreshes automatically invalidate stale bodies without a full wipe.
+  const itemBodyCache = React.useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     // Inject styles once
@@ -2251,16 +2267,25 @@ export function App() {
           setData(msg.payload);
           setState('data');
           setIsRefreshing(false);
-          // Auto-select the latest sprint (sprints are sorted numeric desc so [0] is the highest)
-          if (msg.payload.sprints.length > 0) {
-            setSprintFilter((prev) => prev ?? msg.payload.sprints[0]);
-          }
-          // §6.3: keep the open detail panel in sync with refreshed board data
+          // Validate the restored sprint filter against the incoming sprint list.
+          // A stale value (different project or archived sprint) is reset to the
+          // latest sprint so the board never silently hides all cards.
+          setSprintFilter((prev) => {
+            if (msg.payload.sprints.length === 0) return null;
+            if (prev && msg.payload.sprints.includes(prev)) return prev;
+            return msg.payload.sprints[0];
+          });
+          // Keep the open detail panel in sync with refreshed board data.
+          // Scan groups with early exit instead of flattening to avoid
+          // unnecessary allocations on large boards.
           setDetailItem((prev) => {
             if (!prev) return prev;
-            const allItems = Object.values(msg.payload.groups).flat().concat(msg.payload.linkedIssuePRs ?? []);
-            const updated = allItems.find((i) => i.id === prev.id);
-            return updated ? { ...updated, body: prev.body } : prev;
+            for (const col of Object.values(msg.payload.groups)) {
+              const updated = col.find((i) => i.id === prev.id);
+              if (updated) return { ...updated, body: prev.body };
+            }
+            const linkedPR = (msg.payload.linkedIssuePRs ?? []).find((i) => i.id === prev.id);
+            return linkedPR ? { ...linkedPR, body: prev.body } : prev;
           });
           break;
         case 'error':
@@ -2275,7 +2300,15 @@ export function App() {
           setLinkedPRs(msg.prs);
           break;
         case 'itemBody':
-          setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, body: msg.body } : prev);
+          // null = transient fetch failure; skip caching so next open retries
+          if (msg.body !== null) {
+            itemBodyCache.current.set(`${msg.itemId}:${msg.updatedAt}`, msg.body);
+          }
+          setDetailItem((prev) =>
+            prev && prev.id === msg.itemId
+              ? { ...prev, body: msg.body ?? undefined }
+              : prev
+          );
           break;
         // Phase 1: PR files
         case 'prFiles':
@@ -2341,6 +2374,12 @@ export function App() {
     setConfig(cfg);
   }, []);
 
+  // Persist sprint filter so it survives tab switches and panel re-opens
+  useEffect(() => {
+    const current = (vscodeApi.getState() as Record<string, unknown> | undefined) ?? {};
+    vscodeApi.setState({ ...current, sprintFilter });
+  }, [sprintFilter]);
+
   // Apply visual mode classes on both body and #root.
   // body → needed for body-level background/color overrides.
   // #root → needed for position:fixed overlay descendants (detail panel, settings modal).
@@ -2349,18 +2388,18 @@ export function App() {
     if (!root) return;
     const isLight = config?.theme === 'light';
     const isColorBlind = config?.colorBlind ?? false;
-    const isLiquidGlass = config?.liquidGlass ?? false;
-    root.classList.toggle('liquid-glass', isLiquidGlass);
+    // Liquid Glass is always on — the toggle is removed from the settings UI.
+    root.classList.add('liquid-glass');
     root.classList.toggle('light-theme', isLight);
     root.classList.toggle('color-blind', isColorBlind);
-    document.body.classList.toggle('liquid-glass', isLiquidGlass);
+    document.body.classList.add('liquid-glass');
     document.body.classList.toggle('light-theme', isLight);
     document.body.classList.toggle('color-blind', isColorBlind);
-  }, [config?.liquidGlass, config?.theme, config?.colorBlind]);
+  }, [config?.theme, config?.colorBlind]);
 
   const filteredGroups = useMemo((): Record<string, BoardItem[]> => {
     if (!data) return {};
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
 
     const result: Record<string, BoardItem[]> = {};
     for (const col of data.columns) {
@@ -2391,12 +2430,12 @@ export function App() {
       result[col] = items;
     }
     return result;
-  }, [data, search, tab, sprintFilter]);
+  }, [data, debouncedSearch, tab, sprintFilter]);
 
   const milestoneGroups = useMemo((): Record<string, BoardItem[]> => {
     if (!data) return {};
     const allItems = Object.values(data.groups).flat();
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
 
     let items = allItems;
     if (sprintFilter) items = items.filter((i) => i.sprint === sprintFilter);
@@ -2418,7 +2457,7 @@ export function App() {
       groups[key].push(item);
     }
     return groups;
-  }, [data, search, sprintFilter]);
+  }, [data, debouncedSearch, sprintFilter]);
 
   const counts = useMemo(() => {
     if (!data) return { all: 0, prs: 0, issues: 0 };
@@ -2432,11 +2471,15 @@ export function App() {
   }, [data, sprintFilter]);
 
   const handleSelectItem = useCallback((item: BoardItem) => {
-    setDetailItem(item);
+    // Cache key includes updatedAt — a board refresh that changes updatedAt
+    // is automatically a cache miss, keeping bodies fresh.
+    const cacheKey = `${item.id}:${item.updatedAt}`;
+    const cachedBody = itemBodyCache.current.get(cacheKey);
+    setDetailItem(cachedBody !== undefined ? { ...item, body: cachedBody } : item);
     setLinkedPRs(null);
     setPrFiles(null);
 
-    if (item.body === undefined) {
+    if (item.body === undefined && cachedBody === undefined) {
       vscodeApi.postMessage({
         type: 'fetchBody',
         itemId: item.id,
@@ -2444,6 +2487,7 @@ export function App() {
         repo: item.repository,
         number: item.number,
         isIssue: item.type === 'ISSUE',
+        updatedAt: item.updatedAt,
       });
     }
     if (item.type === 'ISSUE') {
