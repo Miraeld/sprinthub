@@ -286,8 +286,12 @@ const MERGE_METHOD_KEY = 'sprinthub.lastMergeMethod';
 type MergeMethod = 'merge' | 'squash' | 'rebase';
 
 function getSavedMergeMethod(): MergeMethod {
-  const saved = localStorage.getItem(MERGE_METHOD_KEY);
-  if (saved === 'merge' || saved === 'squash' || saved === 'rebase') return saved;
+  try {
+    const saved = localStorage.getItem(MERGE_METHOD_KEY);
+    if (saved === 'merge' || saved === 'squash' || saved === 'rebase') return saved;
+  } catch {
+    // SecurityError in restrictive contexts — fall through to default
+  }
   return 'squash';
 }
 
@@ -322,7 +326,7 @@ function MergeButton({ item, onMerge }: { item: BoardItem; onMerge: (method: Mer
   ];
 
   const handleMerge = (method: MergeMethod) => {
-    localStorage.setItem(MERGE_METHOD_KEY, method);
+    try { localStorage.setItem(MERGE_METHOD_KEY, method); } catch { /* SecurityError — persist fails silently */ }
     setPreferredMethod(method);
     setOpen(false);
     onMerge(method);

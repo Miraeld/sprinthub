@@ -1609,6 +1609,7 @@
   }
   .merge-dropdown-item:last-child { border-bottom: none; }
   .merge-dropdown-item:hover { background: #252535; }
+  .merge-dropdown-item-preferred { background: #89b4fa0d; }
   .merge-dropdown-label { font-size: 12px; font-weight: 500; color: #cdd6f4; }
   .merge-dropdown-desc { font-size: 11px; color: #585b70; }
 
@@ -2382,6 +2383,7 @@
   .light-theme.liquid-glass .merge-dropdown { background: rgba(240,245,255,0.95) !important; border-color: rgba(100,140,255,0.30) !important; }
   .light-theme.liquid-glass .merge-dropdown-item { border-bottom-color: rgba(100,140,255,0.14) !important; }
   .light-theme.liquid-glass .merge-dropdown-item:hover { background: rgba(210,222,255,0.50) !important; }
+  .light-theme.liquid-glass .merge-dropdown-item-preferred { background: rgba(30,66,245,0.06) !important; }
   .light-theme.liquid-glass .merge-dropdown-label { color: #2a3468 !important; }
   .light-theme.liquid-glass .merge-dropdown-desc { color: #5060a0 !important; }
   .light-theme.liquid-glass .standup-modal {
@@ -2610,6 +2612,7 @@
   .light-theme .merge-dropdown { background: #eff1f5; border-color: #bcc0cc; box-shadow: 0 8px 24px rgba(76,79,105,0.18); }
   .light-theme .merge-dropdown-item { border-bottom-color: #dce0e8; }
   .light-theme .merge-dropdown-item:hover { background: #dce0e8; }
+  .light-theme .merge-dropdown-item-preferred { background: #1e42f50d; }
   .light-theme .merge-dropdown-label { color: #4c4f69; }
   .light-theme .merge-dropdown-desc { color: #6c6f85; }
   /* Conflict banner */
