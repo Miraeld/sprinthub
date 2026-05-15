@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { BoardItem, ConflictThreat, ExtensionMessage, GHLabel, LinkedPR, PRFile, RunwayConfig, RunwayData, StandupData, StandupSection, StandupRepoGroup } from '../src/types';
 import { ColumnGroup } from './components/ColumnGroup';
 import { DetailPanel } from './components/DetailPanel';
