@@ -176,6 +176,7 @@ export function App() {
   const [prFiles, setPrFiles] = useState<PRFile[] | null>(null);
   // Phase 2: conflict threats
   const [conflictThreats, setConflictThreats] = useState<ConflictThreat[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   // Phase 3: standup
   const [standupData, setStandupData] = useState<StandupData | null>(null);
   const [standupMarkdown, setStandupMarkdown] = useState<string | null>(null);
@@ -201,13 +202,19 @@ export function App() {
       const msg = event.data as ExtensionMessage;
       switch (msg.type) {
         case 'loading':
-          setIsRefreshing(true);
+          setIsLoadingMore(true);
           if (state !== 'data') setState('loading');
+          break;
+        case 'refreshing':
+          setIsLoadingMore(true);
+          break;
+        case 'dataComplete':
+          setIsLoadingMore(false);
+          setIsRefreshing(false);
           break;
         case 'data': {
           setData(msg.payload);
           setState('data');
-          setIsRefreshing(false);
           // Validate the restored sprint filter against the incoming sprint list.
           // A stale value (different project or archived sprint) is reset to the
           // latest sprint so the board never silently hides all cards.
@@ -990,6 +997,12 @@ export function App() {
       {data && (
         <div className="footer">
           {formatLastUpdated(data.lastUpdated)}
+          {isLoadingMore && (
+            <span className="footer-loading-more" title="Fetching latest data…">
+              <span className="footer-loading-dot" />
+              Updating…
+            </span>
+          )}
           {sprintFilter && <span style={{ marginLeft: 8, color: '#89b4fa' }}>· Sprint: {sprintFilter}</span>}
           {data.rateLimit && (() => {
             const { remaining, limit, resetAt } = data.rateLimit;

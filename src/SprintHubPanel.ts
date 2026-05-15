@@ -36,12 +36,15 @@ export class SprintHubPanel {
 
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
+  private readonly _context: vscode.ExtensionContext;
   private readonly _disposables: vscode.Disposable[] = [];
   private _refreshTimer: ReturnType<typeof setInterval> | undefined;
   private _statusBarItem: vscode.StatusBarItem;
   private _lastData: RunwayData | undefined;
 
-  public static createOrShow(extensionUri: vscode.Uri) {
+  private static readonly CACHE_KEY = 'sprinthub.cachedData';
+
+  public static createOrShow(extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
@@ -62,12 +65,13 @@ export class SprintHubPanel {
       }
     );
 
-    SprintHubPanel.currentPanel = new SprintHubPanel(panel, extensionUri);
+    SprintHubPanel.currentPanel = new SprintHubPanel(panel, extensionUri, context);
   }
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
     this._panel = panel;
     this._extensionUri = extensionUri;
+    this._context = context;
 
     // Phase 2: Status bar blocker watchdog
     this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -233,8 +237,6 @@ export class SprintHubPanel {
   }
 
   private async _loadData() {
-    this._post({ type: 'loading' });
-
     const config = vscode.workspace.getConfiguration('sprinthub');
     const owner = config.get<string>('owner', '').trim();
     const projectNumber = config.get<number>('projectNumber', 0);
@@ -250,6 +252,15 @@ export class SprintHubPanel {
       return;
     }
 
+    // Show cached data immediately so the board is visible while fresh data loads
+    const cached = this._context.globalState.get<RunwayData>(SprintHubPanel.CACHE_KEY);
+    if (cached) {
+      this._post({ type: 'data', payload: cached });
+      this._post({ type: 'refreshing' });
+    } else {
+      this._post({ type: 'loading' });
+    }
+
     try {
       const data = await fetchProjectData(
         owner,
@@ -257,19 +268,23 @@ export class SprintHubPanel {
         ownerType === 'organization',
         statusFieldName,
         (partial) => {
-          // Deliver each page to the webview as it arrives so the board
-          // is visible and interactive after the very first page (~100 items)
+          // Deliver each page to the webview as it arrives
           this._post({ type: 'data', payload: partial });
           this._updateStatusBar(partial);
         }
       );
-      // All pages done — kick off background enrichment with complete data
       this._lastData = data;
-      void this._fetchLinkedPRsBackground(data.groups);
-      void this._checkConflicts(data);
+      // Persist for next open
+      void this._context.globalState.update(SprintHubPanel.CACHE_KEY, data);
+      // Background enrichment — post dataComplete when both finish
+      void Promise.all([
+        this._fetchLinkedPRsBackground(data.groups),
+        this._checkConflicts(data),
+      ]).finally(() => this._post({ type: 'dataComplete' }));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this._post({ type: 'error', message: msg });
+      this._post({ type: 'dataComplete' });
     }
   }
 

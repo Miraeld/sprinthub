@@ -153,6 +153,8 @@ export interface StandupData {
 // Messages: extension → webview
 export type ExtensionMessage =
   | { type: 'loading' }
+  | { type: 'refreshing' }
+  | { type: 'dataComplete' }
   | { type: 'data'; payload: RunwayData }
   | { type: 'error'; message: string }
   | { type: 'config'; payload: RunwayConfig }
