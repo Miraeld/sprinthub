@@ -2217,7 +2217,10 @@ export function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<FilterTab>('dashboard');
-  const [sprintFilter, setSprintFilter] = useState<string | null>(null);
+  const [sprintFilter, setSprintFilter] = useState<string | null>(() => {
+    const saved = vscodeApi.getState() as { sprintFilter?: string | null } | undefined;
+    return saved?.sprintFilter ?? null;
+  });
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -2333,6 +2336,12 @@ export function App() {
     vscodeApi.postMessage({ type: 'updateConfig', payload: cfg });
     setConfig(cfg);
   }, []);
+
+  // Persist sprint filter so it survives tab switches and panel re-opens
+  useEffect(() => {
+    const current = (vscodeApi.getState() as Record<string, unknown> | undefined) ?? {};
+    vscodeApi.setState({ ...current, sprintFilter });
+  }, [sprintFilter]);
 
   // Apply visual mode classes on both body and #root.
   // body → needed for body-level background/color overrides.
