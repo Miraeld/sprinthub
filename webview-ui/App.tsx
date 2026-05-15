@@ -358,6 +358,21 @@ export function App() {
     return groups;
   }, [data, debouncedSearch, sprintFilter]);
 
+  const filteredLinkedIssuePRs = useMemo(() => {
+    let linked = data?.linkedIssuePRs ?? [];
+    if (sprintFilter) linked = linked.filter((i) => i.sprint === sprintFilter);
+    const q = debouncedSearch.toLowerCase().trim();
+    if (!q) return linked;
+    return linked.filter((i) =>
+      i.title.toLowerCase().includes(q) ||
+      String(i.number).includes(q) ||
+      i.author.login.toLowerCase().includes(q) ||
+      i.labels.some((l) => l.name.toLowerCase().includes(q)) ||
+      i.repository.toLowerCase().includes(q) ||
+      (i.headRefName ?? '').toLowerCase().includes(q)
+    );
+  }, [data, debouncedSearch, sprintFilter]);
+
   const counts = useMemo(() => {
     if (!data) return { all: 0, prs: 0, issues: 0 };
     let all = Object.values(data.groups).flat();
@@ -739,8 +754,8 @@ export function App() {
             {tab === 'dashboard' ? (
               /* Dashboard view — PRs grouped by action needed */
               <LaunchpadView
-                items={data.columns.flatMap((c) => data.groups[c] ?? [])}
-                linkedIssuePRs={data.linkedIssuePRs ?? []}
+                items={data.columns.flatMap((c) => filteredGroups[c] ?? [])}
+                linkedIssuePRs={filteredLinkedIssuePRs}
                 viewerLogin={data.viewerLogin ?? ''}
                 onSelect={handleSelectItem}
                 onOpenUrl={handleOpenUrl}
