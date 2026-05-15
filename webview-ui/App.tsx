@@ -2210,8 +2210,8 @@ function renderStandupMarkdown(md: string, onOpenUrl: (url: string) => void): Re
 // ──────────────────────────────────────────────────────────────────────────────
 
 function useDebounce<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = React.useState(value);
-  React.useEffect(() => {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
     const id = setTimeout(() => setDebounced(value), delay);
     return () => clearTimeout(id);
   }, [value, delay]);
