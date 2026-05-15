@@ -2233,6 +2233,8 @@ export function App() {
   const [repoLabelsCache, setRepoLabelsCache] = useState<Map<string, GHLabel[]>>(new Map());
   // v2: CODEOWNERS cache keyed by "owner/repo"
   const [codeownersCache, setCodeownersCache] = useState<Map<string, Array<{ pattern: string; owners: string[] }>>>(new Map());
+  // §1.7: issue/PR body cache keyed by itemId — avoids re-fetching on every panel open
+  const itemBodyCache = React.useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     // Inject styles once
@@ -2268,6 +2270,7 @@ export function App() {
           setLinkedPRs(msg.prs);
           break;
         case 'itemBody':
+          itemBodyCache.current.set(msg.itemId, msg.body);
           setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, body: msg.body } : prev);
           break;
         // Phase 1: PR files
@@ -2425,11 +2428,13 @@ export function App() {
   }, [data, sprintFilter]);
 
   const handleSelectItem = useCallback((item: BoardItem) => {
-    setDetailItem(item);
+    // Restore body from cache if available so the panel shows content instantly
+    const cachedBody = itemBodyCache.current.get(item.id);
+    setDetailItem(cachedBody !== undefined ? { ...item, body: cachedBody } : item);
     setLinkedPRs(null);
     setPrFiles(null);
 
-    if (item.body === undefined) {
+    if (item.body === undefined && cachedBody === undefined) {
       vscodeApi.postMessage({
         type: 'fetchBody',
         itemId: item.id,
