@@ -274,6 +274,47 @@ export function App() {
         case 'settingsProjects':
           setSettingsProjects(msg.projects);
           break;
+        // Phase 1: PR files
+        case 'prFiles':
+          setPrFiles(msg.files);
+          break;
+        // Phase 2: conflict threats
+        case 'conflictThreats':
+          setConflictThreats(msg.threats);
+          break;
+        // Phase 3: standup
+        case 'standup':
+          setStandupMarkdown(msg.markdown);
+          setStandupLoading(false);
+          break;
+        // Phase 3: metadata confirmed
+        case 'metadataUpdated':
+          setDetailItem((prev) =>
+            prev && prev.id === msg.itemId
+              ? { ...prev, labels: msg.labels, assignees: msg.assignees }
+              : prev
+          );
+          break;
+        // Phase 3: repo labels loaded
+        case 'repoLabels': {
+          const cacheKey = `${msg.owner}/${msg.repo}`;
+          setRepoLabelsCache((prev) => new Map(prev).set(cacheKey, msg.labels));
+          break;
+        }
+        // v2: draft converted to ready
+        case 'prReadied':
+          setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, isDraft: false } : prev);
+          break;
+        // v2: PR merged
+        case 'prMerged':
+          setDetailItem((prev) => prev && prev.id === msg.itemId ? { ...prev, state: 'MERGED' } : prev);
+          break;
+        // v2: CODEOWNERS loaded
+        case 'codeowners': {
+          const coKey = `${msg.owner}/${msg.repo}`;
+          setCodeownersCache((prev) => new Map(prev).set(coKey, msg.entries));
+          break;
+        }
       }
     };
 
