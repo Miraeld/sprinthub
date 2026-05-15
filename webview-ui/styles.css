@@ -2337,6 +2337,11 @@
   .light-theme.liquid-glass .item-title { color: #1e2550 !important; }
   .light-theme.liquid-glass .item-num { color: #5060a0 !important; }
   .light-theme.liquid-glass .repo-tag { color: #4858a0 !important; }
+  .light-theme.liquid-glass .stale-badge {
+    background: #f9e2af22 !important;
+    border-color: #d4980088 !important;
+    color: #a06000 !important;
+  }
   .light-theme.liquid-glass .lp-group {
     backdrop-filter: blur(32px) saturate(180%) brightness(1.04) !important;
     border: 1.5px solid transparent !important;

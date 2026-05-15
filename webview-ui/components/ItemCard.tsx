@@ -1,5 +1,6 @@
 import React from 'react';
 import { BoardItem, CIState, ReviewInfo } from '../../src/types';
+import { STALE_THRESHOLD_DAYS } from '../constants';
 
 interface Props {
   item: BoardItem;
@@ -135,8 +136,6 @@ function BranchIcon() {
 }
 
 // ── Main component ────────────────────────────────────────
-
-const STALE_THRESHOLD_DAYS = 7;
 
 export function ItemCard({ item, onSelect, onOpenUrl }: Props) {
   const isPR = item.type === 'PULL_REQUEST';
