@@ -2355,14 +2355,14 @@ export function App() {
     if (!root) return;
     const isLight = config?.theme === 'light';
     const isColorBlind = config?.colorBlind ?? false;
-    const isLiquidGlass = config?.liquidGlass ?? false;
-    root.classList.toggle('liquid-glass', isLiquidGlass);
+    // Liquid Glass is always on — the toggle is removed from the settings UI.
+    root.classList.add('liquid-glass');
     root.classList.toggle('light-theme', isLight);
     root.classList.toggle('color-blind', isColorBlind);
-    document.body.classList.toggle('liquid-glass', isLiquidGlass);
+    document.body.classList.add('liquid-glass');
     document.body.classList.toggle('light-theme', isLight);
     document.body.classList.toggle('color-blind', isColorBlind);
-  }, [config?.liquidGlass, config?.theme, config?.colorBlind]);
+  }, [config?.theme, config?.colorBlind]);
 
   const filteredGroups = useMemo((): Record<string, BoardItem[]> => {
     if (!data) return {};
