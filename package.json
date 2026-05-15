@@ -2,7 +2,7 @@
   "name": "sprinthub",
   "displayName": "SprintHub",
   "description": "GitHub Projects v2 dashboard inside VS Code — sprint board, PR status, CI checks, and team hub",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "miraeld",
   "icon": "resources/sprinthub-icon.png",
   "repository": {

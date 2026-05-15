@@ -962,7 +962,19 @@ export function App() {
                   No milestones found
                 </div>
               ) : (
-                Object.entries(milestoneGroups).map(([milestone, items]) => (
+                Object.entries(milestoneGroups)
+                  .sort(([a], [b]) => {
+                    if (a === '(No Milestone)') return -1;
+                    if (b === '(No Milestone)') return 1;
+                    const parts = (s: string) => s.split('.').map((n) => parseInt(n, 10) || 0);
+                    const ap = parts(a), bp = parts(b);
+                    for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+                      const diff = (bp[i] ?? 0) - (ap[i] ?? 0);
+                      if (diff !== 0) return diff;
+                    }
+                    return 0;
+                  })
+                  .map(([milestone, items]) => (
                   <ColumnGroup
                     key={milestone}
                     column={milestone}
