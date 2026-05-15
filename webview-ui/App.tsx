@@ -354,7 +354,12 @@ export function App() {
 
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const inInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.isContentEditable;
 
       // Cmd/Ctrl+K — focus search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -521,6 +526,12 @@ export function App() {
       (i.headRefName ?? '').toLowerCase().includes(q)
     );
   }, [data, debouncedSearch, sprintFilter]);
+
+  // Reset keyboard focus whenever the visible card set changes (filter, search, tab, sprint)
+  useEffect(() => {
+    document.querySelector<HTMLElement>('.keyboard-focused')?.classList.remove('keyboard-focused');
+    keyboardFocusedIndex.current = -1;
+  }, [filteredGroups, tab]);
 
   const counts = useMemo(() => {
     if (!data) return { all: 0, prs: 0, issues: 0 };
