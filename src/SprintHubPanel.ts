@@ -95,7 +95,7 @@ export class SprintHubPanel {
             void this._fetchLinkedPRs(message.itemId, message.owner, message.repo, message.issueNumber);
             break;
           case 'fetchBody':
-            void this._fetchBody(message.itemId, message.owner, message.repo, message.number, message.isIssue);
+            void this._fetchBody(message.itemId, message.owner, message.repo, message.number, message.isIssue, message.updatedAt);
             break;
           // Phase 1: Work-On-This Engine
           case 'workOnThis':
@@ -198,12 +198,14 @@ export class SprintHubPanel {
     }
   }
 
-  private async _fetchBody(itemId: string, owner: string, repo: string, number: number, isIssue: boolean) {
+  private async _fetchBody(itemId: string, owner: string, repo: string, number: number, isIssue: boolean, updatedAt: string) {
     try {
       const body = await fetchItemBody(owner, repo, number, isIssue);
-      this._post({ type: 'itemBody', itemId, body });
+      this._post({ type: 'itemBody', itemId, body, updatedAt });
     } catch {
-      this._post({ type: 'itemBody', itemId, body: '' });
+      // null signals a transient failure — the webview will not cache it so the
+      // next open will retry rather than permanently showing an empty body.
+      this._post({ type: 'itemBody', itemId, body: null, updatedAt });
     }
   }
 
