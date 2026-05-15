@@ -2454,6 +2454,32 @@
   .light-theme.liquid-glass .standup-h3 { color: #2a3878 !important; }
   .light-theme.liquid-glass .standup-li { color: #2a3060 !important; }
   .light-theme.liquid-glass .standup-p { color: #4858a0 !important; }
+
+  /* su-* rich standup view — light theme */
+  .light-theme.liquid-glass .su-date { color: #6070a8 !important; }
+  .light-theme.liquid-glass .su-section-title { color: #1a2050 !important; }
+  .light-theme.liquid-glass .su-section-count {
+    background: rgba(60,80,200,0.10) !important;
+    color: #4858a0 !important;
+  }
+  .light-theme.liquid-glass .su-repo-header { color: #2a3878 !important; }
+  .light-theme.liquid-glass .su-repo-header:hover {
+    background: rgba(60,80,200,0.08) !important;
+    color: #1a2050 !important;
+  }
+  .light-theme.liquid-glass .su-repo-count {
+    background: rgba(60,80,200,0.08) !important;
+    color: #6070a8 !important;
+  }
+  .light-theme.liquid-glass .su-repo-items { border-left-color: rgba(60,80,200,0.20) !important; }
+  .light-theme.liquid-glass .su-item { color: #2a3060 !important; }
+  .light-theme.liquid-glass .su-item:hover { background: rgba(60,80,200,0.07) !important; }
+  .light-theme.liquid-glass .su-item-num { color: #8c8fa1 !important; }
+  .light-theme.liquid-glass .standup-view-btn { color: #6070a8 !important; }
+  .light-theme.liquid-glass .standup-view-btn:not(:last-child) { border-right-color: rgba(60,80,200,0.20) !important; }
+  .light-theme.liquid-glass .standup-view-btn.active { background: rgba(30,60,245,0.10) !important; color: #1e3db0 !important; }
+  .light-theme.liquid-glass .standup-view-btn:hover:not(.active) { background: rgba(60,80,200,0.07) !important; color: #2a3878 !important; }
+
   .light-theme.liquid-glass .settings-overlay {
     background: rgba(80,100,220,0.10) !important;
   }
