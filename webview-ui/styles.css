@@ -1962,38 +1962,63 @@
 
   /* Board item cards */
   .liquid-glass .item-card {
-    backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
-    -webkit-backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
-    /* Gradient border: bright top-left → dark bottom-right = real glass edge */
+    /* No backdrop-filter here — moved to ::before so displacement only hits the
+       captured background layer, leaving card text completely undistorted */
     border: 1.5px solid transparent;
     background:
-      linear-gradient(rgba(16,16,36,0.14), rgba(16,16,36,0.14)) padding-box,
+      linear-gradient(rgba(16,16,36,0.10), rgba(16,16,36,0.10)) padding-box,
       linear-gradient(155deg, rgba(255,255,255,0.44) 0%, rgba(255,255,255,0.06) 42%, rgba(0,0,0,0.26) 100%) border-box;
     box-shadow:
       0 6px 28px rgba(0,0,0,0.24),
       0 1px 4px rgba(0,0,0,0.12),
       inset 0 1.5px 0 rgba(255,255,255,0.26),
       inset 0 -1px 0 rgba(0,0,0,0.20);
-    /* Lens distortion of the wave background behind the glass */
-    filter: url(#glass-distort);
     position: relative;
     overflow: hidden;
   }
-  /* Top specular highlight on each card */
+  /*
+    ::before captures the wave background via backdrop-filter then
+    displaces it with the lens filter — if Chromium applies filter
+    after compositing the backdrop, this gives background-only distortion.
+    Card content sits above via z-index and is never filtered.
+  */
+  .liquid-glass .item-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
+    -webkit-backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
+    filter: url(#glass-distort);
+    /* Diagonal specular sheen combined into the same layer */
+    background: linear-gradient(
+      125deg,
+      rgba(255,255,255,0.16) 0%,
+      rgba(137,180,250,0.08) 22%,
+      rgba(203,166,247,0.05) 46%,
+      transparent 68%
+    );
+    z-index: 0;
+    pointer-events: none;
+  }
+  /* Top edge highlight sits above the displaced layer */
   .liquid-glass .item-card::after {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22) 50%, transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28) 50%, transparent);
     pointer-events: none;
+    z-index: 2;
   }
+  /* All card children must sit above the displaced backdrop */
+  .liquid-glass .item-card > * { position: relative; z-index: 1; }
   .liquid-glass .item-card:hover {
-    background: rgba(46, 50, 82, 0.44);
-    border-color: rgba(137,180,250,0.32);
+    background:
+      linear-gradient(rgba(46,50,82,0.36), rgba(46,50,82,0.36)) padding-box,
+      linear-gradient(155deg, rgba(255,255,255,0.44) 0%, rgba(255,255,255,0.06) 42%, rgba(137,180,250,0.28) 100%) border-box;
     box-shadow:
       0 8px 36px rgba(0,0,0,0.32),
-      0 0 0 1px rgba(137,180,250,0.14),
       inset 0 1px 0 rgba(255,255,255,0.14);
   }
 

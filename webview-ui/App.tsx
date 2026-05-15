@@ -449,9 +449,9 @@ export function App() {
             scale=4 means ≤4px displacement — wave colours behind glass appear refracted,
             text at 12-13px is imperceptibly shifted (<1px typical).
           */}
-          <filter id="glass-distort" x="-6%" y="-6%" width="112%" height="112%" colorInterpolationFilters="sRGB">
+          <filter id="glass-distort" x="-8%" y="-8%" width="116%" height="116%" colorInterpolationFilters="sRGB">
             <feTurbulence type="fractalNoise" baseFrequency="0.003 0.002" numOctaves="2" seed="42" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
