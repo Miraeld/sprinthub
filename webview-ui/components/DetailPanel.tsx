@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BoardItem, CIState, CheckRun, GHLabel, LinkedPR, PRFile, ReviewInfo } from '../../src/types';
-import { LARGE_PR_THRESHOLD } from '../constants';
+import { LARGE_PR_THRESHOLD, STALE_THRESHOLD_DAYS } from '../constants';
 
 // ─── Codeowners helper ────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ function computeQualityFlags(item: BoardItem, files: PRFile[] | null): QualityFl
   const daysOpen = (Date.now() - new Date(item.createdAt).getTime()) / 86_400_000;
   const totalLines = (item.additions ?? 0) + (item.deletions ?? 0);
 
-  if (daysOpen > 7) flags.push({ label: `Stale · ${Math.floor(daysOpen)}d open`, color: '#f9e2af' });
+  if (daysOpen > STALE_THRESHOLD_DAYS) flags.push({ label: `Stale · ${Math.floor(daysOpen)}d open`, color: '#f9e2af' });
   if (totalLines > LARGE_PR_THRESHOLD) flags.push({ label: `Large · ${totalLines} lines`, color: '#f38ba8' });
   if (!item.body?.trim()) flags.push({ label: 'No description', color: '#fab387' });
   if (!item.reviewRequests?.length && !item.reviews?.length) {
@@ -283,8 +283,28 @@ function PRFilesSection({
 
 // ─── Merge button ─────────────────────────────────────────────────────────────
 
-function MergeButton({ item, onMerge }: { item: BoardItem; onMerge: (method: 'merge' | 'squash' | 'rebase') => void }) {
+const MERGE_METHOD_KEY = 'sprinthub.lastMergeMethod';
+type MergeMethod = 'merge' | 'squash' | 'rebase';
+
+function getSavedMergeMethod(): MergeMethod {
+  try {
+    const saved = localStorage.getItem(MERGE_METHOD_KEY);
+    if (saved === 'merge' || saved === 'squash' || saved === 'rebase') return saved;
+  } catch {
+    // SecurityError in restrictive contexts — fall through to default
+  }
+  return 'squash';
+}
+
+const ALL_MERGE_OPTIONS: Array<{ method: MergeMethod; label: string; desc: string }> = [
+  { method: 'squash', label: 'Squash and merge', desc: 'Combine all commits into one' },
+  { method: 'merge', label: 'Create a merge commit', desc: 'Preserve all commits with a merge commit' },
+  { method: 'rebase', label: 'Rebase and merge', desc: 'Rebase commits onto the base branch' },
+];
+
+function MergeButton({ item, onMerge }: { item: BoardItem; onMerge: (method: MergeMethod) => void }) {
   const [open, setOpen] = useState(false);
+  const [preferredMethod, setPreferredMethod] = useState<MergeMethod>(getSavedMergeMethod);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -300,11 +320,20 @@ function MergeButton({ item, onMerge }: { item: BoardItem; onMerge: (method: 'me
 
   if (!isReady) return null;
 
-  const options: Array<{ method: 'merge' | 'squash' | 'rebase'; label: string; desc: string }> = [
-    { method: 'squash', label: 'Squash and merge', desc: 'Combine all commits into one' },
-    { method: 'merge', label: 'Create a merge commit', desc: 'Preserve all commits with a merge commit' },
-    { method: 'rebase', label: 'Rebase and merge', desc: 'Rebase commits onto the base branch' },
+  // Preferred method shown first
+  const options = [
+    ...ALL_MERGE_OPTIONS.filter((o) => o.method === preferredMethod),
+    ...ALL_MERGE_OPTIONS.filter((o) => o.method !== preferredMethod),
   ];
+
+  const handleMerge = (method: MergeMethod) => {
+    try { localStorage.setItem(MERGE_METHOD_KEY, method); } catch { /* SecurityError — persist fails silently */ }
+    setPreferredMethod(method);
+    setOpen(false);
+    onMerge(method);
+  };
+
+  const preferred = ALL_MERGE_OPTIONS.find((o) => o.method === preferredMethod)!;
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -313,7 +342,7 @@ function MergeButton({ item, onMerge }: { item: BoardItem; onMerge: (method: 'me
           <circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/>
           <path d="M6 21V9a9 9 0 0 0 9 9"/>
         </svg>
-        Merge
+        {preferred.label}
         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
           style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
           <polyline points="6 9 12 15 18 9"/>
@@ -322,9 +351,16 @@ function MergeButton({ item, onMerge }: { item: BoardItem; onMerge: (method: 'me
       {open && (
         <div className="merge-dropdown">
           {options.map((opt) => (
-            <button key={opt.method} className="merge-dropdown-item"
-              onClick={() => { setOpen(false); onMerge(opt.method); }}>
-              <span className="merge-dropdown-label">{opt.label}</span>
+            <button key={opt.method} className={`merge-dropdown-item${opt.method === preferredMethod ? ' merge-dropdown-item-preferred' : ''}`}
+              onClick={() => handleMerge(opt.method)}>
+              <span className="merge-dropdown-label">
+                {opt.method === preferredMethod && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4, flexShrink: 0 }}>
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                )}
+                {opt.label}
+              </span>
               <span className="merge-dropdown-desc">{opt.desc}</span>
             </button>
           ))}

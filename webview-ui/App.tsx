@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { BoardItem, ConflictThreat, ExtensionMessage, GHLabel, LinkedPR, PRFile, RunwayConfig, RunwayData } from '../src/types';
 import { ColumnGroup } from './components/ColumnGroup';
 import { DetailPanel } from './components/DetailPanel';
@@ -155,6 +155,10 @@ export function App() {
   // handleSelectItem and the stale-body useEffect both fire for the same item.
   const lastBodyFetchKey = React.useRef<string | null>(null);
 
+  // Keyboard navigation
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const keyboardFocusedIndex = useRef<number>(-1);
+
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       const msg = event.data as ExtensionMessage;
@@ -250,6 +254,7 @@ export function App() {
         // Phase 3: repo labels loaded
         case 'repoLabels': {
           const cacheKey = `${msg.owner}/${msg.repo}`;
+          labelsInFlight.current.delete(cacheKey);
           setRepoLabelsCache((prev) => new Map(prev).set(cacheKey, msg.labels));
           break;
         }
@@ -287,6 +292,91 @@ export function App() {
     setIsRefreshing(true);
     vscodeApi.postMessage({ type: 'refresh' });
   }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const NAVIGABLE = '.item-card, .lp-row';
+
+    function getCards(): HTMLElement[] {
+      return Array.from(document.querySelectorAll<HTMLElement>(NAVIGABLE));
+    }
+
+    function setFocus(index: number) {
+      const cards = getCards();
+      if (!cards.length) return;
+      const clamped = Math.max(0, Math.min(index, cards.length - 1));
+      // Remove highlight from previous
+      document.querySelector<HTMLElement>('.keyboard-focused')?.classList.remove('keyboard-focused');
+      cards[clamped].classList.add('keyboard-focused');
+      cards[clamped].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      keyboardFocusedIndex.current = clamped;
+    }
+
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const inInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'BUTTON' ||
+        target.isContentEditable;
+
+      // Cmd/Ctrl+K — focus search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      // Esc — close detail panel (handled first) or blur search
+      if (e.key === 'Escape') {
+        setDetailItem(null);
+        setLinkedPRs(null);
+        setPrFiles(null);
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        return;
+      }
+
+      // Skip R / arrow / Enter when typing in an input
+      if (inInput) return;
+
+      // R — refresh
+      if (e.key === 'r' || e.key === 'R') {
+        handleRefresh();
+        return;
+      }
+
+      // ↑/↓ — navigate cards
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const cards = getCards();
+        if (!cards.length) return;
+        const current = keyboardFocusedIndex.current;
+        const next = e.key === 'ArrowDown'
+          ? (current < cards.length - 1 ? current + 1 : 0)
+          : (current > 0 ? current - 1 : cards.length - 1);
+        setFocus(next);
+        return;
+      }
+
+      // Enter — open focused card
+      if (e.key === 'Enter') {
+        const idx = keyboardFocusedIndex.current;
+        const cards = getCards();
+        if (idx >= 0 && idx < cards.length) {
+          cards[idx].click();
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleRefresh]);
 
   const handleOpenUrl = useCallback((url: string) => {
     vscodeApi.postMessage({ type: 'openUrl', url });
@@ -396,6 +486,12 @@ export function App() {
       (i.headRefName ?? '').toLowerCase().includes(q)
     );
   }, [data, debouncedSearch, sprintFilter]);
+
+  // Reset keyboard focus whenever the visible card set changes (filter, search, tab, sprint)
+  useEffect(() => {
+    document.querySelector<HTMLElement>('.keyboard-focused')?.classList.remove('keyboard-focused');
+    keyboardFocusedIndex.current = -1;
+  }, [filteredGroups, tab]);
 
   const counts = useMemo(() => {
     if (!data) return { all: 0, prs: 0, issues: 0 };
@@ -513,6 +609,27 @@ export function App() {
   const handleFetchRepoLabels = useCallback((owner: string, repo: string) => {
     vscodeApi.postMessage({ type: 'fetchRepoLabels', owner, repo });
   }, []);
+
+  // Tracks in-flight label fetches to avoid duplicate requests when the board
+  // refreshes before a pending response lands (cleared when the response arrives).
+  const labelsInFlight = React.useRef<Set<string>>(new Set());
+
+  // §1.8: Preload labels for all repos visible on the board after each data load.
+  // Fires in parallel for repos not yet in the cache so the label editor opens instantly.
+  useEffect(() => {
+    if (!data) return;
+    const allItems = [...Object.values(data.groups).flat(), ...(data.linkedIssuePRs ?? [])];
+    const seen = new Set<string>();
+    for (const item of allItems) {
+      if (!item.repositoryOwner || !item.repository) continue;
+      const key = `${item.repositoryOwner}/${item.repository}`;
+      if (seen.has(key) || repoLabelsCache.has(key) || labelsInFlight.current.has(key)) continue;
+      seen.add(key);
+      labelsInFlight.current.add(key);
+      vscodeApi.postMessage({ type: 'fetchRepoLabels', owner: item.repositoryOwner, repo: item.repository });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   // v2: convert draft to ready
   const handleConvertDraftToReady = useCallback((itemId: string, owner: string, repo: string, prNumber: number) => {
@@ -737,6 +854,7 @@ export function App() {
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
         <input
+          ref={searchInputRef}
           className="search-input"
           placeholder={tab === 'milestones' ? 'Search milestones and items…' : 'Search by title, number, author, label, branch, sprint…'}
           value={search}
@@ -831,6 +949,20 @@ export function App() {
         <div className="footer">
           {formatLastUpdated(data.lastUpdated)}
           {sprintFilter && <span style={{ marginLeft: 8, color: '#89b4fa' }}>· Sprint: {sprintFilter}</span>}
+          {data.rateLimit && (() => {
+            const { remaining, limit, resetAt } = data.rateLimit;
+            const color = remaining < 5 ? '#f38ba8' : remaining < 20 ? '#f9e2af' : '#6c7086';
+            const resetTime = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return (
+              <span
+                className="rate-limit-badge"
+                style={{ color }}
+                title={`GitHub API quota — resets at ${resetTime}`}
+              >
+                · API {remaining}/{limit}
+              </span>
+            );
+          })()}
         </div>
       )}
 
