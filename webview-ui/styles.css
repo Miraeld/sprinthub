@@ -1690,6 +1690,7 @@
     padding: 14px 16px; border-bottom: 1px solid #2a2a3d;
   }
   .standup-title { font-size: 13px; font-weight: 600; color: #cdd6f4; display: flex; align-items: center; gap: 8px; }
+  .standup-title svg { color: #89b4fa; }
   .standup-body { flex: 1; overflow-y: auto; padding: 16px; }
   .standup-md {
     font-size: 12px; color: #cdd6f4; white-space: pre-wrap; line-height: 1.7;
@@ -1748,6 +1749,60 @@
   }
   .standup-link:hover { text-decoration: underline; }
   .standup-spacer { height: 10px; }
+
+  /* ── Standup rich view ───────────────────────── */
+  .su-date {
+    font-size: 11px; color: #6c7086; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 14px;
+  }
+  .su-section { margin-bottom: 16px; }
+  .su-section-header {
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 6px;
+  }
+  .su-section-icon { font-size: 13px; line-height: 1; flex-shrink: 0; }
+  .su-section-title {
+    font-size: 13px; font-weight: 700; color: #cdd6f4; flex: 1;
+  }
+  .su-section-count {
+    font-size: 11px; color: #6c7086; background: #1e1e2d;
+    border-radius: 8px; padding: 1px 7px; font-weight: 600;
+  }
+  .su-repo-group { margin-left: 4px; margin-bottom: 4px; }
+  .su-repo-header {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none; color: #a6adc8;
+    cursor: pointer; padding: 3px 4px; border-radius: 5px;
+    font-size: 12px; font-weight: 600; width: 100%; text-align: left;
+    transition: background 0.1s;
+  }
+  .su-repo-header:hover { background: #1e1e2d; color: #cdd6f4; }
+  .su-repo-chevron {
+    transition: transform 0.15s; flex-shrink: 0; color: #585b70;
+    transform: rotate(0deg);
+  }
+  .su-repo-chevron.open { transform: rotate(90deg); }
+  .su-repo-name { flex: 1; }
+  .su-repo-count {
+    font-size: 10px; color: #6c7086; background: #181826;
+    border-radius: 6px; padding: 1px 6px;
+  }
+  .su-repo-items {
+    display: flex; flex-direction: column; gap: 1px;
+    margin-left: 20px; padding-left: 8px;
+    border-left: 1px solid #2a2a3d; margin-bottom: 4px;
+  }
+  .su-item {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none; color: #cdd6f4;
+    cursor: pointer; padding: 3px 6px; border-radius: 5px;
+    font-size: 12px; text-align: left; width: 100%;
+    transition: background 0.1s;
+  }
+  .su-item:hover { background: #1e1e2d; }
+  .su-item-num { color: #585b70; font-size: 11px; flex-shrink: 0; }
+  .su-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ── Phase 3: Metadata Editor ────────────────── */
   .metadata-editor { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
@@ -2417,12 +2472,40 @@
   .light-theme.liquid-glass .standup-modal::before {
     background: linear-gradient(148deg, rgba(255,255,255,0.50) 0%, rgba(200,220,255,0.15) 40%, transparent 70%) !important;
   }
+  .light-theme.liquid-glass .standup-title { color: #1a2050 !important; }
+  .light-theme.liquid-glass .standup-title svg { color: #1e3db0 !important; }
   .light-theme.liquid-glass .standup-md,
   .light-theme.liquid-glass .standup-rendered { color: #2a3060 !important; }
   .light-theme.liquid-glass .standup-h2 { color: #1a2050 !important; border-bottom-color: rgba(60,80,200,0.20) !important; }
   .light-theme.liquid-glass .standup-h3 { color: #2a3878 !important; }
   .light-theme.liquid-glass .standup-li { color: #2a3060 !important; }
   .light-theme.liquid-glass .standup-p { color: #4858a0 !important; }
+
+  /* su-* rich standup view — light theme */
+  .light-theme.liquid-glass .su-date { color: #2a3878 !important; }
+  .light-theme.liquid-glass .su-section-title { color: #1a2050 !important; }
+  .light-theme.liquid-glass .su-section-count {
+    background: rgba(60,80,200,0.10) !important;
+    color: #4858a0 !important;
+  }
+  .light-theme.liquid-glass .su-repo-header { color: #2a3878 !important; }
+  .light-theme.liquid-glass .su-repo-header:hover {
+    background: rgba(60,80,200,0.08) !important;
+    color: #1a2050 !important;
+  }
+  .light-theme.liquid-glass .su-repo-count {
+    background: rgba(60,80,200,0.08) !important;
+    color: #6070a8 !important;
+  }
+  .light-theme.liquid-glass .su-repo-items { border-left-color: rgba(60,80,200,0.20) !important; }
+  .light-theme.liquid-glass .su-item { color: #2a3060 !important; }
+  .light-theme.liquid-glass .su-item:hover { background: rgba(60,80,200,0.07) !important; }
+  .light-theme.liquid-glass .su-item-num { color: #8c8fa1 !important; }
+  .light-theme.liquid-glass .standup-view-btn { color: #6070a8 !important; }
+  .light-theme.liquid-glass .standup-view-btn:not(:last-child) { border-right-color: rgba(60,80,200,0.20) !important; }
+  .light-theme.liquid-glass .standup-view-btn.active { background: rgba(30,60,245,0.10) !important; color: #1e3db0 !important; }
+  .light-theme.liquid-glass .standup-view-btn:hover:not(.active) { background: rgba(60,80,200,0.07) !important; color: #2a3878 !important; }
+
   .light-theme.liquid-glass .settings-overlay {
     background: rgba(80,100,220,0.10) !important;
   }

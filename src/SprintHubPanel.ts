@@ -7,7 +7,7 @@ import {
   fetchItemBody,
   fetchPRFiles,
   fetchAllOpenPRFiles,
-  generateStandupMarkdown,
+  generateStandupData,
   updateIssueMetadata,
   fetchRepoLabels,
   convertDraftToReady,
@@ -487,11 +487,11 @@ export class SprintHubPanel {
 
   private async _generateStandup(viewerLogin: string) {
     try {
-      const markdown = await generateStandupMarkdown(viewerLogin);
-      this._post({ type: 'standup', markdown });
+      const { data, markdown } = await generateStandupData(viewerLogin);
+      this._post({ type: 'standup', data, markdown });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this._post({ type: 'standup', markdown: `*Error generating standup: ${msg}*` });
+      this._post({ type: 'standup', data: { date: '', sections: [], error: msg }, markdown: `*Error generating standup: ${msg}*` });
     }
   }
 
