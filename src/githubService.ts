@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BoardItem, CheckRun, CIState, GHLabel, GHUser, LinkedPR, PRFile, RunwayData, ReviewInfo } from './types';
+import { BoardItem, CheckRun, CIState, GHLabel, GHUser, LinkedPR, PRFile, RateLimit, RunwayData, ReviewInfo } from './types';
 
 const GH_GRAPHQL = 'https://api.github.com/graphql';
 
@@ -486,12 +486,12 @@ export async function fetchProjectData(
   let cursor: string | null = null;
 
   type ProjectResponse = {
-    rateLimit?: { remaining: number; limit: number; resetAt: string };
+    rateLimit?: RateLimit;
     viewer: { login: string };
     org?: { projectV2: ProjectData };
     user?: { projectV2: ProjectData };
   };
-  let lastRateLimit: { remaining: number; limit: number; resetAt: string } | undefined;
+  let lastRateLimit: RateLimit | undefined;
 
   do {
     const data: ProjectResponse = await graphql<ProjectResponse>(

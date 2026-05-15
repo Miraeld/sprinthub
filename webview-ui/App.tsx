@@ -874,8 +874,7 @@ export function App() {
           {sprintFilter && <span style={{ marginLeft: 8, color: '#89b4fa' }}>· Sprint: {sprintFilter}</span>}
           {data.rateLimit && (() => {
             const { remaining, limit, resetAt } = data.rateLimit;
-            const pct = remaining / limit;
-            const color = pct < 5 / limit ? '#f38ba8' : remaining < 20 ? '#f9e2af' : '#6c7086';
+            const color = remaining < 5 ? '#f38ba8' : remaining < 20 ? '#f9e2af' : '#6c7086';
             const resetTime = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             return (
               <span
