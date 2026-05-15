@@ -2555,12 +2555,27 @@
     border-left-color: #bcc0cc !important;
     color: #4c4f69;
   }
-  .light-theme .detail-title { color: #4c4f69; }
+  .light-theme .detail-title { color: #23273a; }
+  .light-theme .detail-num { color: #6c6f85; }
   .light-theme .detail-meta-row { color: #6c6f85; }
+  .light-theme .detail-meta-label { color: #6c6f85; }
+  .light-theme .detail-meta-value { color: #4c4f69; }
+  .light-theme .detail-section-label { color: #5c5f77; }
   .light-theme .detail-section-title { color: #4c4f69; border-bottom-color: #bcc0cc; }
+  .light-theme .detail-divider { background: #ccd0da; }
+  .light-theme .detail-branch { background: #dce0e8; border-color: #bcc0cc; color: #4c4f69; }
+  .light-theme .detail-body-text { background: #dce0e8; border-color: #bcc0cc; color: #4c4f69; }
+  .light-theme .detail-body-empty { color: #8c8fa1; }
   .light-theme .detail-close-btn { color: #6c6f85; }
   .light-theme .detail-close-btn:hover { background: #ccd0da; }
+  .light-theme .detail-gh-btn { background: #dce0e8; border-color: #bcc0cc; color: #5c5f77; }
+  .light-theme .detail-gh-btn:hover { background: #ccd0da; color: #4c4f69; border-color: #acb0be; }
   .light-theme .detail-body-raw { background: #dce0e8; border-color: #bcc0cc; color: #5c5f77; }
+  .light-theme .badge-sprint { color: #1e66f5; background: rgba(30,102,245,0.10); border-color: rgba(30,102,245,0.30); }
+  .light-theme .badge-milestone { color: #8839ef; background: rgba(136,57,239,0.10); border-color: rgba(136,57,239,0.30); }
+  .light-theme .review-approved-chip { color: #40a02b; background: rgba(64,160,43,0.12); border-color: rgba(64,160,43,0.30); }
+  .light-theme .review-changes-chip  { color: #d20f39; background: rgba(210,15,57,0.10); border-color: rgba(210,15,57,0.28); }
+  .light-theme .review-pending-chip  { color: #df8e1d; background: rgba(223,142,29,0.12); border-color: rgba(223,142,29,0.30); }
   .light-theme .ci-row { border-bottom-color: #bcc0cc; }
   .light-theme .ci-name { color: #4c4f69; }
   .light-theme .review-chip { background: #ccd0da; color: #4c4f69; }
