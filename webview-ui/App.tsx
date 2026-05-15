@@ -2209,6 +2209,15 @@ function renderStandupMarkdown(md: string, onOpenUrl: (url: string) => void): Re
 
 // ──────────────────────────────────────────────────────────────────────────────
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
 export function App() {
   const [state, setState] = useState<'loading' | 'error' | 'data'>('loading');
   const [data, setData] = useState<RunwayData | null>(null);
@@ -2216,6 +2225,7 @@ export function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 150);
   const [tab, setTab] = useState<FilterTab>('dashboard');
   const [sprintFilter, setSprintFilter] = useState<string | null>(() => {
     const saved = vscodeApi.getState() as { sprintFilter?: string | null } | undefined;
@@ -2366,7 +2376,7 @@ export function App() {
 
   const filteredGroups = useMemo((): Record<string, BoardItem[]> => {
     if (!data) return {};
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
 
     const result: Record<string, BoardItem[]> = {};
     for (const col of data.columns) {
@@ -2397,12 +2407,12 @@ export function App() {
       result[col] = items;
     }
     return result;
-  }, [data, search, tab, sprintFilter]);
+  }, [data, debouncedSearch, tab, sprintFilter]);
 
   const milestoneGroups = useMemo((): Record<string, BoardItem[]> => {
     if (!data) return {};
     const allItems = Object.values(data.groups).flat();
-    const q = search.toLowerCase().trim();
+    const q = debouncedSearch.toLowerCase().trim();
 
     let items = allItems;
     if (sprintFilter) items = items.filter((i) => i.sprint === sprintFilter);
@@ -2424,7 +2434,7 @@ export function App() {
       groups[key].push(item);
     }
     return groups;
-  }, [data, search, sprintFilter]);
+  }, [data, debouncedSearch, sprintFilter]);
 
   const counts = useMemo(() => {
     if (!data) return { all: 0, prs: 0, issues: 0 };
