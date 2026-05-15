@@ -265,13 +265,18 @@
 
   /* ─── Item card ───────────────────────────── */
   .item-card {
-    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 36px 52px 1fr 80px 30px 80px 140px;
+    gap: 4px;
+    align-items: center;
+    padding: 6px 12px;
     margin-bottom: 4px;
     background: #1e1e2d;
     border: 1px solid #2a2a3d;
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s;
+    min-height: 36px;
   }
 
   .item-card:hover {
@@ -285,58 +290,23 @@
     outline-offset: -2px;
   }
 
-  .item-top {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .item-type {
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .item-body { flex: 1; min-width: 0; }
-
-  .item-title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-
-  .item-title {
-    font-weight: 500;
-    color: #cdd6f4;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .item-title:hover { text-decoration: underline; color: #89b4fa; }
-
-  .item-num {
-    color: #585b70;
-    font-size: 12px;
-    flex-shrink: 0;
-  }
-
-  .item-bottom {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 5px;
-    flex-wrap: wrap;
-  }
-
   /* Labels */
   .label {
-    padding: 1px 7px;
+    padding: 1px 6px;
     border-radius: 10px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     white-space: nowrap;
+  }
+
+  .lp-avatar-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #313244;
+    color: #cdd6f4;
+    font-size: 9px;
+    font-weight: 600;
   }
 
   /* Meta row */
