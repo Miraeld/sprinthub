@@ -1,5 +1,6 @@
 import React from 'react';
 import { BoardItem, CIState, ReviewInfo } from '../../src/types';
+import { LARGE_PR_THRESHOLD } from '../constants';
 
 interface Props {
   item: BoardItem;
@@ -141,17 +142,12 @@ interface CardQualityFlag {
   color: string;
 }
 
-const LARGE_PR_THRESHOLD = 500;
-
 function computeCardQualityFlags(item: BoardItem): CardQualityFlag[] {
-  if (item.type !== 'PULL_REQUEST') return [];
+  if (item.type !== 'PULL_REQUEST' || item.isDraft) return [];
   const flags: CardQualityFlag[] = [];
   const totalLines = (item.additions ?? 0) + (item.deletions ?? 0);
   if (totalLines > LARGE_PR_THRESHOLD) {
     flags.push({ label: `Large · ${totalLines} lines`, color: '#f38ba8' });
-  }
-  if (!item.reviewRequests?.length && !item.reviews?.length) {
-    flags.push({ label: 'No reviewers', color: '#fab387' });
   }
   return flags.slice(0, 2);
 }
