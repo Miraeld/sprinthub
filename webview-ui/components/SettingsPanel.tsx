@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RunwayConfig } from '../../src/types';
+
+interface OwnerOption { login: string; ownerType: 'organization' | 'user' }
+interface ProjectOption { number: number; title: string }
 
 interface Props {
   config: RunwayConfig;
   onSave: (config: RunwayConfig) => void;
   onClose: () => void;
+  owners: OwnerOption[] | null;
+  projects: ProjectOption[] | null;
+  onFetchOwners: () => void;
+  onFetchProjects: (owner: string, ownerType: 'organization' | 'user') => void;
 }
 
-export function SettingsPanel({ config, onSave, onClose }: Props) {
+export function SettingsPanel({ config, onSave, onClose, owners, projects, onFetchOwners, onFetchProjects }: Props) {
   const [owner, setOwner] = useState(config.owner);
   const [projectNumber, setProjectNumber] = useState(
     config.projectNumber > 0 ? String(config.projectNumber) : ''
@@ -18,6 +25,27 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
   const [theme, setTheme] = useState<'dark' | 'light'>(config.theme ?? 'dark');
   const [colorBlind, setColorBlind] = useState(config.colorBlind ?? false);
 
+  // Fetch owners when the modal opens
+  useEffect(() => { onFetchOwners(); }, []);
+
+  // When owners load and current owner matches one, fetch its projects
+  useEffect(() => {
+    if (!owners || owner.trim() === '') return;
+    const match = owners.find((o) => o.login === owner.trim());
+    if (match) onFetchProjects(match.login, match.ownerType);
+  }, [owners]);
+
+  const handleOwnerSelect = (login: string, type: 'organization' | 'user') => {
+    setOwner(login);
+    setOwnerType(type);
+    setProjectNumber('');
+    onFetchProjects(login, type);
+  };
+
+  const handleProjectSelect = (num: string) => {
+    setProjectNumber(num);
+  };
+
   const handleSave = () => {
     onSave({
       owner: owner.trim(),
@@ -25,7 +53,7 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
       ownerType,
       statusFieldName: statusFieldName.trim() || 'Status',
       refreshInterval: parseInt(refreshInterval, 10) || 5,
-      liquidGlass: true, // always on
+      liquidGlass: true,
       theme,
       colorBlind,
     });
@@ -33,6 +61,9 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
   };
 
   const isValid = owner.trim().length > 0 && parseInt(projectNumber, 10) > 0;
+
+  const ownersLoading = owners === null;
+  const projectsLoading = projects === null && owner.trim().length > 0;
 
   return (
     <div className="settings-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -53,50 +84,98 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
         </div>
 
         <div className="settings-body">
-          <div className="settings-field">
-            <label className="settings-label">Owner Type</label>
-            <div className="settings-toggle-group">
-              <button
-                className={`settings-toggle-btn${ownerType === 'organization' ? ' active' : ''}`}
-                onClick={() => setOwnerType('organization')}
-              >
-                Organization
-              </button>
-              <button
-                className={`settings-toggle-btn${ownerType === 'user' ? ' active' : ''}`}
-                onClick={() => setOwnerType('user')}
-              >
-                User
-              </button>
-            </div>
-          </div>
-
+          {/* Owner picker */}
           <div className="settings-field">
             <label className="settings-label">
-              {ownerType === 'organization' ? 'Organization' : 'Username'}
+              Organization or User
+              {ownersLoading && <span className="settings-loading-dot" />}
             </label>
-            <input
-              className="settings-input"
-              value={owner}
-              onChange={(e) => setOwner(e.target.value)}
-              placeholder={ownerType === 'organization' ? 'my-org' : 'username'}
-              autoFocus
-            />
+            {owners && owners.length > 0 ? (
+              <select
+                className="settings-select"
+                value={owner}
+                onChange={(e) => {
+                  const selected = owners.find((o) => o.login === e.target.value);
+                  if (selected) handleOwnerSelect(selected.login, selected.ownerType);
+                  else setOwner(e.target.value);
+                }}
+              >
+                {!owners.some((o) => o.login === owner) && owner && (
+                  <option value={owner}>{owner}</option>
+                )}
+                {owners.map((o) => (
+                  <option key={o.login} value={o.login}>
+                    {o.ownerType === 'organization' ? '⬡ ' : '◎ '}{o.login}
+                    {o.ownerType === 'organization' ? ' (org)' : ' (you)'}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="settings-input-row">
+                <input
+                  className="settings-input"
+                  value={owner}
+                  onChange={(e) => {
+                    setOwner(e.target.value);
+                    setProjectNumber('');
+                  }}
+                  onBlur={() => {
+                    if (owner.trim()) onFetchProjects(owner.trim(), ownerType);
+                  }}
+                  placeholder={ownerType === 'organization' ? 'my-org' : 'username'}
+                  autoFocus={!ownersLoading}
+                />
+                <div className="settings-toggle-group settings-toggle-group-sm">
+                  <button
+                    className={`settings-toggle-btn${ownerType === 'organization' ? ' active' : ''}`}
+                    onClick={() => setOwnerType('organization')}
+                  >Org</button>
+                  <button
+                    className={`settings-toggle-btn${ownerType === 'user' ? ' active' : ''}`}
+                    onClick={() => setOwnerType('user')}
+                  >User</button>
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* Project picker */}
           <div className="settings-field">
-            <label className="settings-label">Project Number</label>
-            <input
-              className="settings-input"
-              type="number"
-              min="1"
-              value={projectNumber}
-              onChange={(e) => setProjectNumber(e.target.value)}
-              placeholder="e.g. 42"
-            />
-            <span className="settings-hint">
-              Found in the URL: github.com/orgs/<em>owner</em>/projects/<strong>42</strong>
-            </span>
+            <label className="settings-label">
+              Project
+              {projectsLoading && <span className="settings-loading-dot" />}
+            </label>
+            {projects && projects.length > 0 ? (
+              <select
+                className="settings-select"
+                value={projectNumber}
+                onChange={(e) => handleProjectSelect(e.target.value)}
+              >
+                <option value="">— pick a project —</option>
+                {projects.map((p) => (
+                  <option key={p.number} value={String(p.number)}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  className="settings-input"
+                  type="number"
+                  min="1"
+                  value={projectNumber}
+                  onChange={(e) => setProjectNumber(e.target.value)}
+                  placeholder="e.g. 42"
+                  disabled={projectsLoading}
+                />
+                {!projectsLoading && (
+                  <span className="settings-hint">
+                    Found in the URL: github.com/orgs/<em>owner</em>/projects/<strong>42</strong>
+                  </span>
+                )}
+              </>
+            )}
           </div>
 
           <div className="settings-field">

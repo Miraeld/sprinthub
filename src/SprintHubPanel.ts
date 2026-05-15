@@ -13,6 +13,8 @@ import {
   convertDraftToReady,
   mergePR,
   fetchCodeowners,
+  fetchSettingsOwners,
+  fetchSettingsProjects,
 } from './githubService';
 import { BoardItem, ConflictThreat, ExtensionMessage, RunwayConfig, RunwayData, WebviewMessage } from './types';
 
@@ -127,6 +129,12 @@ export class SprintHubPanel {
             break;
           case 'fetchCodeowners':
             void this._fetchCodeowners(message.owner, message.repo);
+            break;
+          case 'fetchSettingsOwners':
+            void this._fetchSettingsOwners();
+            break;
+          case 'fetchSettingsProjects':
+            void this._fetchSettingsProjects(message.owner, message.ownerType);
             break;
         }
       },
@@ -548,6 +556,24 @@ export class SprintHubPanel {
       this._post({ type: 'codeowners', owner, repo, entries });
     } catch {
       this._post({ type: 'codeowners', owner, repo, entries: [] });
+    }
+  }
+
+  private async _fetchSettingsOwners() {
+    try {
+      const owners = await fetchSettingsOwners();
+      this._post({ type: 'settingsOwners', owners });
+    } catch {
+      this._post({ type: 'settingsOwners', owners: [] });
+    }
+  }
+
+  private async _fetchSettingsProjects(owner: string, ownerType: 'organization' | 'user') {
+    try {
+      const projects = await fetchSettingsProjects(owner, ownerType);
+      this._post({ type: 'settingsProjects', projects });
+    } catch {
+      this._post({ type: 'settingsProjects', projects: [] });
     }
   }
 

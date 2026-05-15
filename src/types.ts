@@ -136,7 +136,10 @@ export type ExtensionMessage =
   // v2 extras
   | { type: 'prReadied'; itemId: string }
   | { type: 'prMerged'; itemId: string }
-  | { type: 'codeowners'; owner: string; repo: string; entries: Array<{ pattern: string; owners: string[] }> };
+  | { type: 'codeowners'; owner: string; repo: string; entries: Array<{ pattern: string; owners: string[] }> }
+  // Settings pickers
+  | { type: 'settingsOwners'; owners: Array<{ login: string; ownerType: 'organization' | 'user' }> }
+  | { type: 'settingsProjects'; projects: Array<{ number: number; title: string }> };
 
 // Messages: webview → extension
 export type WebviewMessage =
@@ -157,4 +160,7 @@ export type WebviewMessage =
   // v2 extras
   | { type: 'convertDraftToReady'; itemId: string; owner: string; repo: string; prNumber: number }
   | { type: 'mergePR'; itemId: string; owner: string; repo: string; prNumber: number; mergeMethod: 'merge' | 'squash' | 'rebase' }
-  | { type: 'fetchCodeowners'; owner: string; repo: string };
+  | { type: 'fetchCodeowners'; owner: string; repo: string }
+  // Settings pickers
+  | { type: 'fetchSettingsOwners' }
+  | { type: 'fetchSettingsProjects'; owner: string; ownerType: 'organization' | 'user' };
