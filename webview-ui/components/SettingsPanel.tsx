@@ -15,8 +15,7 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
   const [ownerType, setOwnerType] = useState<'organization' | 'user'>(config.ownerType);
   const [statusFieldName, setStatusFieldName] = useState(config.statusFieldName);
   const [refreshInterval, setRefreshInterval] = useState(String(config.refreshInterval));
-  const [liquidGlass, setLiquidGlass] = useState(config.liquidGlass ?? false);
-  const [theme] = useState<'dark' | 'light'>(config.theme ?? 'dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(config.theme ?? 'dark');
   const [colorBlind, setColorBlind] = useState(config.colorBlind ?? false);
 
   const handleSave = () => {
@@ -26,7 +25,7 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
       ownerType,
       statusFieldName: statusFieldName.trim() || 'Status',
       refreshInterval: parseInt(refreshInterval, 10) || 5,
-      liquidGlass,
+      liquidGlass: true, // always on
       theme,
       colorBlind,
     });
@@ -126,7 +125,6 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
             <span className="settings-hint">Set to 0 to disable auto-refresh</span>
           </div>
 
-          {/* Theme toggle — hidden until light theme is polished
           <div className="settings-field">
             <label className="settings-label">Theme</label>
             <div className="settings-toggle-group">
@@ -143,24 +141,6 @@ export function SettingsPanel({ config, onSave, onClose }: Props) {
                 ☀️ Light
               </button>
             </div>
-          </div>
-          */}
-
-          <div className="settings-field settings-field-row">
-            <label className="settings-toggle-label" htmlFor="liquidGlassToggle">
-              <span className="settings-toggle-icon">✦</span>
-              Liquid Glass
-            </label>
-            <button
-              id="liquidGlassToggle"
-              className={`settings-switch${liquidGlass ? ' active' : ''}`}
-              onClick={() => setLiquidGlass((v) => !v)}
-              role="switch"
-              aria-checked={liquidGlass}
-              title="Enable frosted-glass / translucent UI"
-            >
-              <span className="settings-switch-knob" />
-            </button>
           </div>
 
           <div className="settings-field settings-field-row">
