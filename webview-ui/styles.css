@@ -1770,22 +1770,17 @@
     100% { background-position: 0% 50%; }
   }
 
-  @keyframes waveFloat {
-    0%   { transform: translateY(0) scaleX(1); }
-    50%  { transform: translateY(-18px) scaleX(1.04); }
-    100% { transform: translateY(0) scaleX(1); }
+  @keyframes waveFloat1 {
+    0%, 100% { transform: translateY(0px) scaleX(1); }
+    50%       { transform: translateY(-24px) scaleX(1.018); }
   }
-
-  @keyframes waveDrift {
-    0%   { transform: translateY(0) translateX(0) scaleX(1); }
-    33%  { transform: translateY(-14px) translateX(10px) scaleX(1.03); }
-    66%  { transform: translateY(10px) translateX(-8px) scaleX(0.98); }
-    100% { transform: translateY(0) translateX(0) scaleX(1); }
+  @keyframes waveFloat2 {
+    0%, 100% { transform: translateY(0px) scaleX(1); }
+    50%       { transform: translateY(20px) scaleX(1.022); }
   }
-
-  @keyframes waveScroll {
-    0%   { background-position: 0 0; }
-    100% { background-position: 0 200px; }
+  @keyframes waveFloat3 {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-16px); }
   }
 
   body.liquid-glass {
@@ -1801,7 +1796,7 @@
     overflow: hidden;
   }
 
-  /* Animated prismatic wave layer */
+  /* Ambient colour context — very subtle, just deepens the background glow */
   body.liquid-glass::before {
     content: '';
     position: fixed;
@@ -1809,41 +1804,10 @@
     z-index: 0;
     pointer-events: none;
     background:
-      radial-gradient(ellipse 80% 40% at 20% 60%, rgba(137,180,250,0.20) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 80% 30%, rgba(203,166,247,0.16) 0%, transparent 60%),
-      radial-gradient(ellipse 100% 30% at 50% 90%, rgba(116,199,236,0.14) 0%, transparent 55%);
-    animation: waveFloat 12s ease-in-out infinite;
-    filter: blur(40px) url(#glass-distort);
-  }
-
-  /* Fixed wave line layer — horizontal stripes warped by SVG displacement into flowing waves */
-  body.liquid-glass::after {
-    content: '';
-    position: fixed;
-    inset: -20%;
-    z-index: 0;
-    pointer-events: none;
-    background: repeating-linear-gradient(
-      180deg,
-      transparent            0px,
-      transparent            67px,
-      rgba(137,180,250,0.00) 68px,
-      rgba(137,180,250,0.30) 73px,
-      rgba(137,180,250,0.85) 80px,
-      rgba(137,180,250,0.30) 87px,
-      rgba(137,180,250,0.00) 92px,
-      transparent            93px,
-      transparent            142px,
-      rgba(203,166,247,0.00) 143px,
-      rgba(203,166,247,0.25) 148px,
-      rgba(203,166,247,0.75) 155px,
-      rgba(203,166,247,0.25) 162px,
-      rgba(203,166,247,0.00) 167px,
-      transparent            168px,
-      transparent            200px
-    );
-    animation: waveScroll 14s linear infinite;
-    filter: url(#wave-distort);
+      radial-gradient(ellipse 80% 40% at 20% 60%, rgba(137,180,250,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 30%, rgba(203,166,247,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 100% 30% at 50% 90%, rgba(116,199,236,0.05) 0%, transparent 55%);
+    filter: blur(70px);
   }
 
   /* Hidden SVG filter container — injected by App.tsx, referenced via url(#glass-distort) */
@@ -1855,17 +1819,36 @@
     pointer-events: none;
   }
 
-  /* Bump the specular rim on cards for more depth */
+  /* macOS-style SVG wave layer — smooth filled bezier shapes */
+  .wave-bg-svg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .wave-p1 { transform-origin: center center; animation: waveFloat1 22s ease-in-out infinite; }
+  .wave-p2 { transform-origin: center center; animation: waveFloat2 28s ease-in-out infinite; }
+  .wave-p3 { transform-origin: center center; animation: waveFloat3 19s ease-in-out infinite; }
+
+  /* Light theme: override wave fill colours to darker tones on bright canvas */
+  body.light-theme .wave-p1 { fill: rgba(30,102,245,0.28); }
+  body.light-theme .wave-p2 { fill: rgba(124,58,237,0.22); }
+  body.light-theme .wave-p3 { fill: rgba(14,165,233,0.20); }
+
+  /* Specular sheen — suggests light refracting through glass */
   .liquid-glass .item-card::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
     background: linear-gradient(
-      135deg,
-      rgba(255,255,255,0.09) 0%,
-      rgba(137,180,250,0.04) 30%,
-      transparent 60%
+      125deg,
+      rgba(255,255,255,0.18) 0%,
+      rgba(137,180,250,0.10) 22%,
+      rgba(203,166,247,0.07) 46%,
+      transparent 68%
     );
     pointer-events: none;
   }
@@ -1933,10 +1916,10 @@
 
   /* Board column groups */
   .liquid-glass .col-group {
-    background: rgba(14, 14, 28, 0.32);
-    backdrop-filter: blur(52px) saturate(220%);
-    -webkit-backdrop-filter: blur(52px) saturate(220%);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(10, 10, 24, 0.18);
+    backdrop-filter: blur(14px) saturate(230%);
+    -webkit-backdrop-filter: blur(14px) saturate(230%);
+    border: 1px solid rgba(255,255,255,0.09);
     box-shadow:
       0 16px 56px rgba(0,0,0,0.38),
       inset 0 1px 0 rgba(255,255,255,0.12),
@@ -1963,13 +1946,13 @@
 
   /* Board item cards */
   .liquid-glass .item-card {
-    background: rgba(22, 22, 44, 0.26);
-    backdrop-filter: blur(36px) saturate(200%);
-    -webkit-backdrop-filter: blur(36px) saturate(200%);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(16, 16, 36, 0.16);
+    backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
+    -webkit-backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
+    border: 1px solid rgba(255,255,255,0.10);
     box-shadow:
-      0 4px 20px rgba(0,0,0,0.22),
-      inset 0 1px 0 rgba(255,255,255,0.1);
+      0 4px 20px rgba(0,0,0,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.12);
     position: relative;
     overflow: hidden;
   }
@@ -1993,10 +1976,10 @@
 
   /* Dashboard PR groups */
   .liquid-glass .lp-group {
-    background: rgba(14, 14, 28, 0.32);
-    backdrop-filter: blur(48px) saturate(220%);
-    -webkit-backdrop-filter: blur(48px) saturate(220%);
-    border: 1px solid rgba(255,255,255,0.09);
+    background: rgba(10, 10, 24, 0.18);
+    backdrop-filter: blur(14px) saturate(230%);
+    -webkit-backdrop-filter: blur(14px) saturate(230%);
+    border: 1px solid rgba(255,255,255,0.10);
     box-shadow:
       0 12px 52px rgba(0,0,0,0.32),
       inset 0 1px 0 rgba(255,255,255,0.12);
