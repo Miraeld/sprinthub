@@ -402,6 +402,74 @@ export function App() {
 
   return (
     <>
+      {/* SVG glass refraction filter — referenced via CSS filter: url(#glass-distort) */}
+      <svg className="glass-filter-svg" aria-hidden="true">
+        <defs>
+          <filter id="glass-distort" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="linearRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.008" numOctaves="4" seed="5" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+
+      {/* macOS-style smooth wave background */}
+      {config?.liquidGlass && (
+        <svg
+          className="wave-bg-svg"
+          aria-hidden="true"
+          viewBox="0 0 1440 900"
+          preserveAspectRatio="xMidYMid slice"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <filter id="wave-blur" x="-10%" y="-50%" width="120%" height="200%">
+              <feGaussianBlur stdDeviation="22"/>
+            </filter>
+            <linearGradient id="wg-blue" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stopColor="#89b4fa" stopOpacity="0"/>
+              <stop offset="18%"  stopColor="#89b4fa" stopOpacity="0.55"/>
+              <stop offset="55%"  stopColor="#74a8ff" stopOpacity="0.50"/>
+              <stop offset="82%"  stopColor="#89b4fa" stopOpacity="0.45"/>
+              <stop offset="100%" stopColor="#89b4fa" stopOpacity="0"/>
+            </linearGradient>
+            <linearGradient id="wg-purple" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stopColor="#cba6f7" stopOpacity="0"/>
+              <stop offset="22%"  stopColor="#cba6f7" stopOpacity="0.48"/>
+              <stop offset="60%"  stopColor="#b48ef4" stopOpacity="0.42"/>
+              <stop offset="85%"  stopColor="#cba6f7" stopOpacity="0.38"/>
+              <stop offset="100%" stopColor="#cba6f7" stopOpacity="0"/>
+            </linearGradient>
+            <linearGradient id="wg-teal" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stopColor="#74c7ec" stopOpacity="0"/>
+              <stop offset="28%"  stopColor="#74c7ec" stopOpacity="0.42"/>
+              <stop offset="65%"  stopColor="#67d3f5" stopOpacity="0.36"/>
+              <stop offset="100%" stopColor="#74c7ec" stopOpacity="0"/>
+            </linearGradient>
+          </defs>
+          {/* Wave 1 — blue, sweeps from lower-left to upper-right */}
+          <path
+            className="wave-p1"
+            d="M -100,650 C 260,490 540,310 860,278 C 1180,246 1390,368 1600,298 L 1600,520 C 1390,578 1180,456 860,488 C 540,520 260,678 -100,838 Z"
+            fill="url(#wg-blue)"
+            filter="url(#wave-blur)"
+          />
+          {/* Wave 2 — purple, upper sweep */}
+          <path
+            className="wave-p2"
+            d="M -100,55 C 310,15 620,128 950,88 C 1280,48 1440,158 1600,108 L 1600,308 C 1440,358 1280,248 950,288 C 620,328 310,215 -100,255 Z"
+            fill="url(#wg-purple)"
+            filter="url(#wave-blur)"
+          />
+          {/* Wave 3 — teal, lower sweep */}
+          <path
+            className="wave-p3"
+            d="M -100,788 C 360,748 660,685 988,725 C 1316,765 1480,832 1600,800 L 1600,920 C 1480,948 1316,898 988,868 C 660,838 360,900 -100,940 Z"
+            fill="url(#wg-teal)"
+            filter="url(#wave-blur)"
+          />
+        </svg>
+      )}
+
       {/* Header */}
       <div className="header">
         <div className="header-left">
