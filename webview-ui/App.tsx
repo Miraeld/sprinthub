@@ -2255,6 +2255,13 @@ export function App() {
           if (msg.payload.sprints.length > 0) {
             setSprintFilter((prev) => prev ?? msg.payload.sprints[0]);
           }
+          // §6.3: keep the open detail panel in sync with refreshed board data
+          setDetailItem((prev) => {
+            if (!prev) return prev;
+            const allItems = Object.values(msg.payload.groups).flat().concat(msg.payload.linkedIssuePRs ?? []);
+            const updated = allItems.find((i) => i.id === prev.id);
+            return updated ? { ...updated, body: prev.body } : prev;
+          });
           break;
         case 'error':
           setErrorMsg(msg.message);
