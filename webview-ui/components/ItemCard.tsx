@@ -1,5 +1,6 @@
 import React from 'react';
 import { BoardItem, CIState, ReviewInfo } from '../../src/types';
+import { STALE_THRESHOLD_DAYS } from '../constants';
 
 interface Props {
   item: BoardItem;
@@ -138,6 +139,8 @@ function BranchIcon() {
 
 export function ItemCard({ item, onSelect, onOpenUrl }: Props) {
   const isPR = item.type === 'PULL_REQUEST';
+  const daysSinceUpdate = (Date.now() - new Date(item.updatedAt).getTime()) / 86_400_000;
+  const isStale = daysSinceUpdate > STALE_THRESHOLD_DAYS;
 
   return (
     <div className="item-card" onClick={() => onSelect(item)}>
@@ -172,6 +175,15 @@ export function ItemCard({ item, onSelect, onOpenUrl }: Props) {
           <div className="item-bottom">
             {/* Draft badge */}
             {isPR && item.isDraft && <span className="draft-badge">Draft</span>}
+            {/* Stale badge */}
+            {isStale && (
+              <span
+                className="stale-badge"
+                title={`No activity for ${Math.floor(daysSinceUpdate)}d`}
+              >
+                {Math.floor(daysSinceUpdate)}d
+              </span>
+            )}
 
             {/* Labels */}
             {item.labels.map((label) => {

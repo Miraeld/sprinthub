@@ -279,6 +279,12 @@
     border-color: #3d3d58;
   }
 
+  .item-card.keyboard-focused,
+  .lp-row.keyboard-focused {
+    outline: 2px solid #89b4fa88;
+    outline-offset: -2px;
+  }
+
   .item-top {
     display: flex;
     align-items: flex-start;
@@ -429,6 +435,16 @@
     font-weight: 600;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+  }
+
+  .stale-badge {
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid #f9e2af55;
+    background: #f9e2af18;
+    color: #f9e2af;
+    font-size: 10px;
+    font-weight: 700;
   }
 
   /* ─── States ──────────────────────────────── */
@@ -1609,6 +1625,7 @@
   }
   .merge-dropdown-item:last-child { border-bottom: none; }
   .merge-dropdown-item:hover { background: #252535; }
+  .merge-dropdown-item-preferred { background: #89b4fa0d; }
   .merge-dropdown-label { font-size: 12px; font-weight: 500; color: #cdd6f4; }
   .merge-dropdown-desc { font-size: 11px; color: #585b70; }
 
@@ -2382,6 +2399,11 @@
   .light-theme.liquid-glass .item-title { color: #1e2550 !important; }
   .light-theme.liquid-glass .item-num { color: #5060a0 !important; }
   .light-theme.liquid-glass .repo-tag { color: #4858a0 !important; }
+  .light-theme.liquid-glass .stale-badge {
+    background: #f9e2af22 !important;
+    border-color: #d4980088 !important;
+    color: #a06000 !important;
+  }
   .light-theme.liquid-glass .lp-group {
     backdrop-filter: blur(32px) saturate(180%) brightness(1.04) !important;
     border: 1.5px solid transparent !important;
@@ -2437,6 +2459,7 @@
   .light-theme.liquid-glass .merge-dropdown { background: rgba(240,245,255,0.95) !important; border-color: rgba(100,140,255,0.30) !important; }
   .light-theme.liquid-glass .merge-dropdown-item { border-bottom-color: rgba(100,140,255,0.14) !important; }
   .light-theme.liquid-glass .merge-dropdown-item:hover { background: rgba(210,222,255,0.50) !important; }
+  .light-theme.liquid-glass .merge-dropdown-item-preferred { background: rgba(30,66,245,0.06) !important; }
   .light-theme.liquid-glass .merge-dropdown-label { color: #2a3468 !important; }
   .light-theme.liquid-glass .merge-dropdown-desc { color: #5060a0 !important; }
   .light-theme.liquid-glass .standup-modal {
@@ -2693,6 +2716,7 @@
   .light-theme .merge-dropdown { background: #eff1f5; border-color: #bcc0cc; box-shadow: 0 8px 24px rgba(76,79,105,0.18); }
   .light-theme .merge-dropdown-item { border-bottom-color: #dce0e8; }
   .light-theme .merge-dropdown-item:hover { background: #dce0e8; }
+  .light-theme .merge-dropdown-item-preferred { background: #1e42f50d; }
   .light-theme .merge-dropdown-label { color: #4c4f69; }
   .light-theme .merge-dropdown-desc { color: #6c6f85; }
   /* Conflict banner */
