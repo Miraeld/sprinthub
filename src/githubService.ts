@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BoardItem, CheckRun, CIState, GHLabel, GHUser, LinkedPR, PRFile, RunwayData, ReviewInfo } from './types';
+import { BoardItem, CheckRun, CIState, GHLabel, GHUser, LinkedPR, PRFile, RateLimit, RunwayData, ReviewInfo, StandupData, StandupRepoGroup, StandupSection } from './types';
 
 const GH_GRAPHQL = 'https://api.github.com/graphql';
 
@@ -80,6 +80,7 @@ query GetRepoOpenPRs($owner: String!, $repo: String!, $cursor: String) {
 // Note: body is NOT fetched here (too large) — loaded on demand via fetchItemBody
 const PROJECT_ITEMS_QUERY = `
 query GetProjectItems($login: String!, $number: Int!, $isOrg: Boolean!, $cursor: String) {
+  rateLimit { remaining limit resetAt }
   viewer { login }
   org: organization(login: $login) @include(if: $isOrg) {
     projectV2(number: $number) {
@@ -484,7 +485,14 @@ export async function fetchProjectData(
   let viewerLogin = '';
   let cursor: string | null = null;
 
-  type ProjectResponse = { viewer: { login: string }; org?: { projectV2: ProjectData }; user?: { projectV2: ProjectData } };
+  type ProjectResponse = {
+    rateLimit?: RateLimit;
+    viewer: { login: string };
+    org?: { projectV2: ProjectData };
+    user?: { projectV2: ProjectData };
+  };
+  let lastRateLimit: RateLimit | undefined;
+
   do {
     const data: ProjectResponse = await graphql<ProjectResponse>(
       token,
@@ -492,6 +500,7 @@ export async function fetchProjectData(
       { login: owner, number: projectNumber, isOrg, cursor }
     );
 
+    if (data.rateLimit) lastRateLimit = data.rateLimit;
     if (!viewerLogin) viewerLogin = data.viewer?.login ?? '';
 
     const project: ProjectData | undefined = isOrg ? data.org?.projectV2 : data.user?.projectV2;
@@ -559,6 +568,7 @@ export async function fetchProjectData(
     totalCount,
     viewerLogin,
     linkedIssuePRs,
+    rateLimit: lastRateLimit,
   };
 }
 
@@ -755,7 +765,7 @@ export async function fetchAllOpenPRFiles(
   return result;
 }
 
-// ─── Phase 3: Standup Markdown Generator ─────────────────────────────────────
+// ─── Phase 3: Standup Generator ──────────────────────────────────────────────
 
 interface RawSearchIssue {
   number: number;
@@ -765,7 +775,27 @@ interface RawSearchIssue {
   repository_url: string;
 }
 
-export async function generateStandupMarkdown(viewerLogin: string): Promise<string> {
+interface RawGitHubEvent {
+  type: string;
+  created_at: string;
+  repo: { name: string };
+  payload: {
+    action?: string;
+    issue?: {
+      number: number;
+      title: string;
+      html_url: string;
+      pull_request?: unknown;
+    };
+    pull_request?: {
+      number: number;
+      title: string;
+      html_url: string;
+    };
+  };
+}
+
+export async function generateStandupData(viewerLogin: string): Promise<{ data: StandupData; markdown: string }> {
   const token = await getToken();
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -773,7 +803,7 @@ export async function generateStandupMarkdown(viewerLogin: string): Promise<stri
   const repoFromUrl = (url: string) => url.replace('https://api.github.com/repos/', '');
 
   async function search(q: string): Promise<RawSearchIssue[]> {
-    const resp = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=20`, {
+    const resp = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=30`, {
       headers: { Authorization: `bearer ${token}`, Accept: 'application/vnd.github+json' },
     });
     if (!resp.ok) return [];
@@ -781,45 +811,93 @@ export async function generateStandupMarkdown(viewerLogin: string): Promise<stri
     return json.items ?? [];
   }
 
-  const [mergedPRs, openPRs, closedIssues] = await Promise.all([
+  async function fetchCommentedItems(): Promise<RawSearchIssue[]> {
+    const resp = await fetch(
+      `https://api.github.com/users/${viewerLogin}/events?per_page=100`,
+      { headers: { Authorization: `bearer ${token}`, Accept: 'application/vnd.github+json' } }
+    );
+    if (!resp.ok) return [];
+    const events = (await resp.json()) as RawGitHubEvent[];
+
+    const seenUrls = new Set<string>();
+    const items: RawSearchIssue[] = [];
+
+    for (const event of events) {
+      // Events are newest-first — stop once we're past the 24h window
+      if (event.created_at < yesterday) break;
+
+      const isMyComment =
+        (event.type === 'IssueCommentEvent' && event.payload.action === 'created') ||
+        (event.type === 'PullRequestReviewCommentEvent' && event.payload.action === 'created') ||
+        event.type === 'PullRequestReviewEvent';
+      if (!isMyComment) continue;
+
+      const target = event.payload.issue ?? event.payload.pull_request;
+      if (!target || seenUrls.has(target.html_url)) continue;
+      seenUrls.add(target.html_url);
+
+      items.push({
+        number: target.number,
+        title: target.title,
+        html_url: target.html_url,
+        repository_url: `https://api.github.com/repos/${event.repo.name}`,
+        pull_request: (event.payload.pull_request ?? event.payload.issue?.pull_request) ? { merged_at: null } : undefined,
+      });
+    }
+    return items;
+  }
+
+  const [mergedPRs, openPRs, commentedItems] = await Promise.all([
     search(`is:pr is:merged author:${viewerLogin} merged:>${yesterday}`),
-    search(`is:pr is:open author:${viewerLogin}`),
-    search(`is:issue is:closed assignee:${viewerLogin} closed:>${yesterday}`),
+    search(`is:pr is:open author:${viewerLogin} updated:>${yesterday}`),
+    fetchCommentedItems(),
   ]);
 
+  // Remove items already listed in merged/open from the commented section
+  const listedUrls = new Set([...mergedPRs, ...openPRs].map((i) => i.html_url));
+  const uniqueCommented = commentedItems.filter((i) => !listedUrls.has(i.html_url));
+
+  function toRepoGroups(items: RawSearchIssue[]): StandupRepoGroup[] {
+    const map = new Map<string, StandupRepoGroup['items']>();
+    for (const item of items) {
+      const repo = repoFromUrl(item.repository_url);
+      if (!map.has(repo)) map.set(repo, []);
+      map.get(repo)!.push({ number: item.number, title: item.title, url: item.html_url, isPR: !!item.pull_request });
+    }
+    return Array.from(map.entries()).map(([repo, its]) => ({ repo, items: its }));
+  }
+
+  const rawSections: Array<{ key: string; icon: string; title: string; items: RawSearchIssue[] }> = [
+    { key: 'merged',    icon: '✅', title: 'Merged PRs',    items: mergedPRs },
+    { key: 'open',      icon: '🔄', title: 'Open PRs',      items: openPRs },
+    { key: 'commented', icon: '💬', title: 'Commented on',  items: uniqueCommented },
+  ];
+
+  const sections: StandupSection[] = rawSections
+    .filter((s) => s.items.length > 0)
+    .map((s) => ({ key: s.key, icon: s.icon, title: s.title, groups: toRepoGroups(s.items) }));
+
+  const data: StandupData = { date: today, sections };
+
+  // Generate markdown from structured data (used for the copy-as-markdown button)
   const lines: string[] = [`## Daily Standup — ${today}`, ''];
-
-  if (mergedPRs.length) {
-    lines.push('### ✅ Merged PRs');
-    for (const pr of mergedPRs) {
-      lines.push(`- [#${pr.number} ${pr.title}](${pr.html_url}) *(${repoFromUrl(pr.repository_url)})*`);
+  if (sections.length === 0) {
+    lines.push('*No activity found in the last 24 hours.*', '');
+  } else {
+    for (const section of sections) {
+      lines.push(`### ${section.icon} ${section.title}`);
+      for (const group of section.groups) {
+        lines.push(`**${group.repo}**`);
+        for (const item of group.items) {
+          lines.push(`- [#${item.number} ${item.title}](${item.url})`);
+        }
+      }
+      lines.push('');
     }
-    lines.push('');
   }
-
-  if (openPRs.length) {
-    lines.push('### 🔄 Open PRs');
-    for (const pr of openPRs) {
-      lines.push(`- [#${pr.number} ${pr.title}](${pr.html_url}) *(${repoFromUrl(pr.repository_url)})*`);
-    }
-    lines.push('');
-  }
-
-  if (closedIssues.length) {
-    lines.push('### 🎯 Issues Closed');
-    for (const issue of closedIssues) {
-      lines.push(`- [#${issue.number} ${issue.title}](${issue.html_url}) *(${repoFromUrl(issue.repository_url)})*`);
-    }
-    lines.push('');
-  }
-
-  if (!mergedPRs.length && !openPRs.length && !closedIssues.length) {
-    lines.push('*No activity found in the last 24 hours.*');
-    lines.push('');
-  }
-
   lines.push('*Generated by SprintHub*');
-  return lines.join('\n');
+
+  return { data, markdown: lines.join('\n') };
 }
 
 // ─── Phase 3: Metadata Sync (Labels / Assignees) ─────────────────────────────

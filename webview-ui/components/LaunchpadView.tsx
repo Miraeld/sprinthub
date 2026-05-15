@@ -1,5 +1,6 @@
 import React from 'react';
 import { BoardItem, CIState, ReviewInfo } from '../../src/types';
+import { STALE_THRESHOLD_DAYS } from '../constants';
 
 interface Props {
   items: BoardItem[];
@@ -112,7 +113,7 @@ function LaunchpadRow({ item, viewerLogin, onSelect, onOpenUrl }: { item: BoardI
   ].filter((u, i, arr) => arr.findIndex((x) => x.login === u.login) === i).slice(0, 4);
 
   const daysSinceUpdate = (Date.now() - new Date(item.updatedAt).getTime()) / 86_400_000;
-  const isStale = daysSinceUpdate > 7;
+  const isStale = daysSinceUpdate > STALE_THRESHOLD_DAYS;
   const waitingOnMe = viewerLogin ? item.reviewRequests?.some((r) => r.login === viewerLogin) ?? false : false;
 
   return (

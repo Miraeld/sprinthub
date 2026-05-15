@@ -7,7 +7,7 @@ import {
   fetchItemBody,
   fetchPRFiles,
   fetchAllOpenPRFiles,
-  generateStandupMarkdown,
+  generateStandupData,
   updateIssueMetadata,
   fetchRepoLabels,
   convertDraftToReady,
@@ -135,37 +135,6 @@ export class SprintHubPanel {
             break;
           case 'fetchSettingsProjects':
             void this._fetchSettingsProjects(message.owner, message.ownerType);
-            break;
-          // Phase 1: Work-On-This Engine
-          case 'workOnThis':
-            void this._workOnThis(message.branchName, message.owner, message.repo);
-            break;
-          // Phase 1: File-Level Deep Linking
-          case 'fetchPRFiles':
-            void this._fetchPRFiles(message.prKey, message.owner, message.repo, message.prNumber);
-            break;
-          case 'openPRFile':
-            void this._openPRFile(message.owner, message.repo, message.prNumber, message.filename, message.patch);
-            break;
-          // Phase 3: Standup Generator
-          case 'generateStandup':
-            void this._generateStandup(message.viewerLogin);
-            break;
-          // Phase 3: Metadata Sync
-          case 'updateMetadata':
-            void this._updateMetadata(message.itemId, message.owner, message.repo, message.issueNumber, message.labels, message.assignees);
-            break;
-          case 'fetchRepoLabels':
-            void this._fetchRepoLabels(message.owner, message.repo);
-            break;
-          case 'convertDraftToReady':
-            void this._convertDraftToReady(message.itemId, message.owner, message.repo, message.prNumber);
-            break;
-          case 'mergePR':
-            void this._mergePR(message.itemId, message.owner, message.repo, message.prNumber, message.mergeMethod);
-            break;
-          case 'fetchCodeowners':
-            void this._fetchCodeowners(message.owner, message.repo);
             break;
         }
       },
@@ -518,11 +487,11 @@ export class SprintHubPanel {
 
   private async _generateStandup(viewerLogin: string) {
     try {
-      const markdown = await generateStandupMarkdown(viewerLogin);
-      this._post({ type: 'standup', markdown });
+      const { data, markdown } = await generateStandupData(viewerLogin);
+      this._post({ type: 'standup', data, markdown });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this._post({ type: 'standup', markdown: `*Error generating standup: ${msg}*` });
+      this._post({ type: 'standup', data: { date: '', sections: [], error: msg }, markdown: `*Error generating standup: ${msg}*` });
     }
   }
 

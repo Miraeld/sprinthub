@@ -70,6 +70,12 @@ export interface BoardItem {
   closingIssueNumbers?: number[]; // issue numbers this PR closes
 }
 
+export interface RateLimit {
+  remaining: number;
+  limit: number;
+  resetAt: string; // ISO timestamp
+}
+
 export interface RunwayData {
   projectTitle: string;
   columns: string[];
@@ -80,6 +86,7 @@ export interface RunwayData {
   viewerLogin: string;
   /** Open PRs linked to board issues via closingPullRequests (Closes #N syntax) */
   linkedIssuePRs: BoardItem[];
+  rateLimit?: RateLimit;
 }
 
 export interface RunwayConfig {
@@ -117,6 +124,32 @@ export interface RepoLabel {
   color: string;
 }
 
+// Phase 3 — Structured standup data
+export interface StandupItem {
+  number: number;
+  title: string;
+  url: string;
+  isPR: boolean;
+}
+
+export interface StandupRepoGroup {
+  repo: string; // "owner/repo"
+  items: StandupItem[];
+}
+
+export interface StandupSection {
+  key: string;
+  icon: string;
+  title: string;
+  groups: StandupRepoGroup[];
+}
+
+export interface StandupData {
+  date: string;
+  sections: StandupSection[];
+  error?: string;
+}
+
 // Messages: extension → webview
 export type ExtensionMessage =
   | { type: 'loading' }
@@ -130,7 +163,7 @@ export type ExtensionMessage =
   // Phase 2
   | { type: 'conflictThreats'; threats: ConflictThreat[] }
   // Phase 3
-  | { type: 'standup'; markdown: string }
+  | { type: 'standup'; data: StandupData; markdown: string }
   | { type: 'metadataUpdated'; itemId: string; labels: GHLabel[]; assignees: GHUser[] }
   | { type: 'repoLabels'; owner: string; repo: string; labels: GHLabel[] }
   // v2 extras

@@ -213,19 +213,26 @@
   .content::-webkit-scrollbar-thumb:hover { background: #3a3a5d; }
 
   /* ─── Column group ────────────────────────── */
-  .col-group { margin-bottom: 2px; }
+  .col-group {
+    border: 1px solid #2a2a3d;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
 
   .col-header {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 20px;
+    padding: 7px 12px;
     cursor: pointer;
     transition: background 0.1s;
     user-select: none;
+    background: rgba(255,255,255,0.015);
+    border-bottom: 1px solid #1e1e2e;
   }
 
-  .col-header:hover { background: #1a1a28; }
+  .col-header:hover { background: rgba(255,255,255,0.03); }
 
   .col-chevron {
     color: #45475a;
@@ -261,76 +268,50 @@
     text-align: center;
   }
 
-  .col-items { padding: 2px 12px 8px; }
+  .col-items { padding: 0; }
 
   /* ─── Item card ───────────────────────────── */
   .item-card {
-    padding: 10px 12px;
-    margin-bottom: 4px;
-    background: #1e1e2d;
-    border: 1px solid #2a2a3d;
-    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 36px 52px 1fr 80px 30px 80px 140px;
+    gap: 4px;
+    align-items: center;
+    padding: 5px 12px;
+    border-bottom: 1px solid #1a1a2e;
     cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
+    transition: background 0.12s;
+    min-height: 34px;
   }
+
+  .item-card:last-child { border-bottom: none; }
 
   .item-card:hover {
-    background: #252535;
-    border-color: #3d3d58;
+    background: rgba(137,180,250,0.06);
   }
 
-  .item-top {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .item-type {
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .item-body { flex: 1; min-width: 0; }
-
-  .item-title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-
-  .item-title {
-    font-weight: 500;
-    color: #cdd6f4;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .item-title:hover { text-decoration: underline; color: #89b4fa; }
-
-  .item-num {
-    color: #585b70;
-    font-size: 12px;
-    flex-shrink: 0;
-  }
-
-  .item-bottom {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 5px;
-    flex-wrap: wrap;
+  .item-card.keyboard-focused,
+  .lp-row.keyboard-focused {
+    outline: 2px solid #89b4fa88;
+    outline-offset: -2px;
   }
 
   /* Labels */
   .label {
-    padding: 1px 7px;
+    padding: 1px 6px;
     border-radius: 10px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     white-space: nowrap;
+  }
+
+  .lp-avatar-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #313244;
+    color: #cdd6f4;
+    font-size: 9px;
+    font-weight: 600;
   }
 
   /* Meta row */
@@ -429,6 +410,25 @@
     font-weight: 600;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+  }
+
+  .card-quality-flag {
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .stale-badge {
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid #f9e2af55;
+    background: #f9e2af18;
+    color: #f9e2af;
+    font-size: 10px;
+    font-weight: 700;
   }
 
   /* ─── States ──────────────────────────────── */
@@ -1609,6 +1609,7 @@
   }
   .merge-dropdown-item:last-child { border-bottom: none; }
   .merge-dropdown-item:hover { background: #252535; }
+  .merge-dropdown-item-preferred { background: #89b4fa0d; }
   .merge-dropdown-label { font-size: 12px; font-weight: 500; color: #cdd6f4; }
   .merge-dropdown-desc { font-size: 11px; color: #585b70; }
 
@@ -1673,6 +1674,7 @@
     padding: 14px 16px; border-bottom: 1px solid #2a2a3d;
   }
   .standup-title { font-size: 13px; font-weight: 600; color: #cdd6f4; display: flex; align-items: center; gap: 8px; }
+  .standup-title svg { color: #89b4fa; }
   .standup-body { flex: 1; overflow-y: auto; padding: 16px; }
   .standup-md {
     font-size: 12px; color: #cdd6f4; white-space: pre-wrap; line-height: 1.7;
@@ -1731,6 +1733,60 @@
   }
   .standup-link:hover { text-decoration: underline; }
   .standup-spacer { height: 10px; }
+
+  /* ── Standup rich view ───────────────────────── */
+  .su-date {
+    font-size: 11px; color: #6c7086; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 14px;
+  }
+  .su-section { margin-bottom: 16px; }
+  .su-section-header {
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 6px;
+  }
+  .su-section-icon { font-size: 13px; line-height: 1; flex-shrink: 0; }
+  .su-section-title {
+    font-size: 13px; font-weight: 700; color: #cdd6f4; flex: 1;
+  }
+  .su-section-count {
+    font-size: 11px; color: #6c7086; background: #1e1e2d;
+    border-radius: 8px; padding: 1px 7px; font-weight: 600;
+  }
+  .su-repo-group { margin-left: 4px; margin-bottom: 4px; }
+  .su-repo-header {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none; color: #a6adc8;
+    cursor: pointer; padding: 3px 4px; border-radius: 5px;
+    font-size: 12px; font-weight: 600; width: 100%; text-align: left;
+    transition: background 0.1s;
+  }
+  .su-repo-header:hover { background: #1e1e2d; color: #cdd6f4; }
+  .su-repo-chevron {
+    transition: transform 0.15s; flex-shrink: 0; color: #585b70;
+    transform: rotate(0deg);
+  }
+  .su-repo-chevron.open { transform: rotate(90deg); }
+  .su-repo-name { flex: 1; }
+  .su-repo-count {
+    font-size: 10px; color: #6c7086; background: #181826;
+    border-radius: 6px; padding: 1px 6px;
+  }
+  .su-repo-items {
+    display: flex; flex-direction: column; gap: 1px;
+    margin-left: 20px; padding-left: 8px;
+    border-left: 1px solid #2a2a3d; margin-bottom: 4px;
+  }
+  .su-item {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none; color: #cdd6f4;
+    cursor: pointer; padding: 3px 6px; border-radius: 5px;
+    font-size: 12px; text-align: left; width: 100%;
+    transition: background 0.1s;
+  }
+  .su-item:hover { background: #1e1e2d; }
+  .su-item-num { color: #585b70; font-size: 11px; flex-shrink: 0; }
+  .su-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ── Phase 3: Metadata Editor ────────────────── */
   .metadata-editor { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
@@ -1886,21 +1942,6 @@
   body.light-theme .wave-p2 { fill: rgba(124,58,237,0.22); }
   body.light-theme .wave-p3 { fill: rgba(14,165,233,0.20); }
 
-  /* Specular sheen — suggests light refracting through glass */
-  .liquid-glass .item-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(
-      125deg,
-      rgba(255,255,255,0.18) 0%,
-      rgba(137,180,250,0.10) 22%,
-      rgba(203,166,247,0.07) 46%,
-      transparent 68%
-    );
-    pointer-events: none;
-  }
 
   #root.liquid-glass {
     position: relative;
@@ -2009,67 +2050,9 @@
   }
   .liquid-glass .col-group > * { position: relative; z-index: 1; }
 
-  /* Board item cards */
-  .liquid-glass .item-card {
-    /* No backdrop-filter here — moved to ::before so displacement only hits the
-       captured background layer, leaving card text completely undistorted */
-    border: 1.5px solid transparent;
-    background:
-      linear-gradient(rgba(16,16,36,0.10), rgba(16,16,36,0.10)) padding-box,
-      linear-gradient(155deg, rgba(255,255,255,0.44) 0%, rgba(255,255,255,0.06) 42%, rgba(0,0,0,0.26) 100%) border-box;
-    box-shadow:
-      0 6px 28px rgba(0,0,0,0.24),
-      0 1px 4px rgba(0,0,0,0.12),
-      inset 0 1.5px 0 rgba(255,255,255,0.26),
-      inset 0 -1px 0 rgba(0,0,0,0.20);
-    position: relative;
-    overflow: hidden;
-  }
-  /*
-    ::before captures the wave background via backdrop-filter then
-    displaces it with the lens filter — if Chromium applies filter
-    after compositing the backdrop, this gives background-only distortion.
-    Card content sits above via z-index and is never filtered.
-  */
-  .liquid-glass .item-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
-    -webkit-backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
-    filter: url(#glass-distort);
-    /* Diagonal specular sheen combined into the same layer */
-    background: linear-gradient(
-      125deg,
-      rgba(255,255,255,0.16) 0%,
-      rgba(137,180,250,0.08) 22%,
-      rgba(203,166,247,0.05) 46%,
-      transparent 68%
-    );
-    z-index: 0;
-    pointer-events: none;
-  }
-  /* Top edge highlight sits above the displaced layer */
-  .liquid-glass .item-card::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28) 50%, transparent);
-    pointer-events: none;
-    z-index: 2;
-  }
-  /* All card children must sit above the displaced backdrop */
-  .liquid-glass .item-card > * { position: relative; z-index: 1; }
-  .liquid-glass .item-card:hover {
-    background:
-      linear-gradient(rgba(46,50,82,0.36), rgba(46,50,82,0.36)) padding-box,
-      linear-gradient(155deg, rgba(255,255,255,0.44) 0%, rgba(255,255,255,0.06) 42%, rgba(137,180,250,0.28) 100%) border-box;
-    box-shadow:
-      0 8px 36px rgba(0,0,0,0.32),
-      inset 0 1px 0 rgba(255,255,255,0.14);
-  }
+  /* Board item cards — flat rows matching lp-row style */
+  .liquid-glass .item-card { background: rgba(4,6,22,0.36); border-bottom-color: rgba(255,255,255,0.06); }
+  .liquid-glass .item-card:hover { background: rgba(137,180,250,0.09); }
 
   /* Dashboard PR groups */
   .liquid-glass .lp-group {
@@ -2310,23 +2293,13 @@
   }
   .light-theme.liquid-glass .col-name { color: #2a3468 !important; }
   .light-theme.liquid-glass .col-count { background: rgba(40,60,200,0.10) !important; border-color: rgba(40,60,200,0.20) !important; color: #3a4878 !important; }
-  .light-theme.liquid-glass .item-card {
-    backdrop-filter: blur(20px) saturate(160%) brightness(1.03) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(160%) brightness(1.03) !important;
-    border: 1.5px solid transparent !important;
-    background:
-      linear-gradient(rgba(255,255,255,0.72), rgba(255,255,255,0.72)) padding-box,
-      linear-gradient(155deg, rgba(255,255,255,0.98) 0%, rgba(200,215,255,0.25) 42%, rgba(60,80,200,0.18) 100%) border-box !important;
-    box-shadow: 0 4px 16px rgba(80,100,200,0.10), inset 0 1.5px 0 rgba(255,255,255,1.0) !important;
+  .light-theme.liquid-glass .item-card { background: rgba(255,255,255,0.46) !important; border-bottom-color: rgba(100,130,255,0.15) !important; }
+  .light-theme.liquid-glass .item-card:hover { background: rgba(210,222,255,0.60) !important; }
+  .light-theme.liquid-glass .stale-badge {
+    background: #f9e2af22 !important;
+    border-color: #d4980088 !important;
+    color: #a06000 !important;
   }
-  .light-theme.liquid-glass .item-card:hover {
-    background:
-      linear-gradient(rgba(225,232,255,0.80), rgba(225,232,255,0.80)) padding-box,
-      linear-gradient(155deg, rgba(255,255,255,0.98) 0%, rgba(180,200,255,0.35) 42%, rgba(30,66,245,0.22) 100%) border-box !important;
-  }
-  .light-theme.liquid-glass .item-title { color: #1e2550 !important; }
-  .light-theme.liquid-glass .item-num { color: #5060a0 !important; }
-  .light-theme.liquid-glass .repo-tag { color: #4858a0 !important; }
   .light-theme.liquid-glass .lp-group {
     backdrop-filter: blur(32px) saturate(180%) brightness(1.04) !important;
     border: 1.5px solid transparent !important;
@@ -2382,6 +2355,7 @@
   .light-theme.liquid-glass .merge-dropdown { background: rgba(240,245,255,0.95) !important; border-color: rgba(100,140,255,0.30) !important; }
   .light-theme.liquid-glass .merge-dropdown-item { border-bottom-color: rgba(100,140,255,0.14) !important; }
   .light-theme.liquid-glass .merge-dropdown-item:hover { background: rgba(210,222,255,0.50) !important; }
+  .light-theme.liquid-glass .merge-dropdown-item-preferred { background: rgba(30,66,245,0.06) !important; }
   .light-theme.liquid-glass .merge-dropdown-label { color: #2a3468 !important; }
   .light-theme.liquid-glass .merge-dropdown-desc { color: #5060a0 !important; }
   .light-theme.liquid-glass .standup-modal {
@@ -2394,12 +2368,40 @@
   .light-theme.liquid-glass .standup-modal::before {
     background: linear-gradient(148deg, rgba(255,255,255,0.50) 0%, rgba(200,220,255,0.15) 40%, transparent 70%) !important;
   }
+  .light-theme.liquid-glass .standup-title { color: #1a2050 !important; }
+  .light-theme.liquid-glass .standup-title svg { color: #1e3db0 !important; }
   .light-theme.liquid-glass .standup-md,
   .light-theme.liquid-glass .standup-rendered { color: #2a3060 !important; }
   .light-theme.liquid-glass .standup-h2 { color: #1a2050 !important; border-bottom-color: rgba(60,80,200,0.20) !important; }
   .light-theme.liquid-glass .standup-h3 { color: #2a3878 !important; }
   .light-theme.liquid-glass .standup-li { color: #2a3060 !important; }
   .light-theme.liquid-glass .standup-p { color: #4858a0 !important; }
+
+  /* su-* rich standup view — light theme */
+  .light-theme.liquid-glass .su-date { color: #2a3878 !important; }
+  .light-theme.liquid-glass .su-section-title { color: #1a2050 !important; }
+  .light-theme.liquid-glass .su-section-count {
+    background: rgba(60,80,200,0.10) !important;
+    color: #4858a0 !important;
+  }
+  .light-theme.liquid-glass .su-repo-header { color: #2a3878 !important; }
+  .light-theme.liquid-glass .su-repo-header:hover {
+    background: rgba(60,80,200,0.08) !important;
+    color: #1a2050 !important;
+  }
+  .light-theme.liquid-glass .su-repo-count {
+    background: rgba(60,80,200,0.08) !important;
+    color: #6070a8 !important;
+  }
+  .light-theme.liquid-glass .su-repo-items { border-left-color: rgba(60,80,200,0.20) !important; }
+  .light-theme.liquid-glass .su-item { color: #2a3060 !important; }
+  .light-theme.liquid-glass .su-item:hover { background: rgba(60,80,200,0.07) !important; }
+  .light-theme.liquid-glass .su-item-num { color: #8c8fa1 !important; }
+  .light-theme.liquid-glass .standup-view-btn { color: #6070a8 !important; }
+  .light-theme.liquid-glass .standup-view-btn:not(:last-child) { border-right-color: rgba(60,80,200,0.20) !important; }
+  .light-theme.liquid-glass .standup-view-btn.active { background: rgba(30,60,245,0.10) !important; color: #1e3db0 !important; }
+  .light-theme.liquid-glass .standup-view-btn:hover:not(.active) { background: rgba(60,80,200,0.07) !important; color: #2a3878 !important; }
+
   .light-theme.liquid-glass .settings-overlay {
     background: rgba(80,100,220,0.10) !important;
   }
@@ -2505,29 +2507,24 @@
   .light-theme .col-group {
     background: #e6e9ef;
     border: 1px solid #bcc0cc;
+    border-radius: 10px;
+    overflow: hidden;
     box-shadow: 0 1px 4px rgba(76,79,105,0.06);
   }
-  .light-theme .col-group-header {
-    background: #e6e9ef !important;
-    border-bottom-color: #bcc0cc !important;
-    color: #4c4f69;
+  .light-theme .col-header {
+    background: #e6e9ef;
+    border-bottom-color: #bcc0cc;
   }
-  .light-theme .col-header-title { color: #4c4f69; }
+  .light-theme .col-header:hover { background: #dce0e8; }
   .light-theme .col-name { color: #4c4f69; }
-  .light-theme .col-header-count {
+  .light-theme .col-count {
     background: #ccd0da;
+    border-color: #bcc0cc;
     color: #5c5f77;
   }
   .light-theme .board-scroll { background: #dce0e8; }
-  .light-theme .item-card {
-    background: #eff1f5 !important;
-    border-color: #bcc0cc !important;
-    box-shadow: 0 1px 3px rgba(76,79,105,0.07);
-  }
-  .light-theme .item-card:hover { background: #e6e9ef !important; border-color: #1e66f5 !important; }
-  .light-theme .item-title { color: #4c4f69; }
-  .light-theme .item-meta { color: #6c6f85; }
-  .light-theme .item-label { background: #ccd0da; color: #4c4f69; border-color: #bcc0cc; }
+  .light-theme .item-card { border-bottom-color: #ccd0da; }
+  .light-theme .item-card:hover { background: rgba(76,79,105,0.06); }
   .light-theme .footer {
     background: #e6e9ef !important;
     border-top-color: #bcc0cc !important;
@@ -2610,6 +2607,7 @@
   .light-theme .merge-dropdown { background: #eff1f5; border-color: #bcc0cc; box-shadow: 0 8px 24px rgba(76,79,105,0.18); }
   .light-theme .merge-dropdown-item { border-bottom-color: #dce0e8; }
   .light-theme .merge-dropdown-item:hover { background: #dce0e8; }
+  .light-theme .merge-dropdown-item-preferred { background: #1e42f50d; }
   .light-theme .merge-dropdown-label { color: #4c4f69; }
   .light-theme .merge-dropdown-desc { color: #6c6f85; }
   /* Conflict banner */
