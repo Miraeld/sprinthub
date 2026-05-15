@@ -872,6 +872,21 @@ export function App() {
         <div className="footer">
           {formatLastUpdated(data.lastUpdated)}
           {sprintFilter && <span style={{ marginLeft: 8, color: '#89b4fa' }}>· Sprint: {sprintFilter}</span>}
+          {data.rateLimit && (() => {
+            const { remaining, limit, resetAt } = data.rateLimit;
+            const pct = remaining / limit;
+            const color = pct < 5 / limit ? '#f38ba8' : remaining < 20 ? '#f9e2af' : '#6c7086';
+            const resetTime = new Date(resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return (
+              <span
+                className="rate-limit-badge"
+                style={{ color }}
+                title={`GitHub API quota — resets at ${resetTime}`}
+              >
+                · API {remaining}/{limit}
+              </span>
+            );
+          })()}
         </div>
       )}
 
