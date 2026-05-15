@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BoardItem, CIState, CheckRun, GHLabel, LinkedPR, PRFile, ReviewInfo } from '../../src/types';
-import { STALE_THRESHOLD_DAYS } from '../constants';
+import { LARGE_PR_THRESHOLD, STALE_THRESHOLD_DAYS } from '../constants';
 
 // ─── Codeowners helper ────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ function computeQualityFlags(item: BoardItem, files: PRFile[] | null): QualityFl
   const totalLines = (item.additions ?? 0) + (item.deletions ?? 0);
 
   if (daysOpen > STALE_THRESHOLD_DAYS) flags.push({ label: `Stale · ${Math.floor(daysOpen)}d open`, color: '#f9e2af' });
-  if (totalLines > 500) flags.push({ label: `Large · ${totalLines} lines`, color: '#f38ba8' });
+  if (totalLines > LARGE_PR_THRESHOLD) flags.push({ label: `Large · ${totalLines} lines`, color: '#f38ba8' });
   if (!item.body?.trim()) flags.push({ label: 'No description', color: '#fab387' });
   if (!item.reviewRequests?.length && !item.reviews?.length) {
     flags.push({ label: 'No reviewers', color: '#fab387' });

@@ -437,6 +437,15 @@
     text-transform: uppercase;
   }
 
+  .card-quality-flag {
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
   .stale-badge {
     padding: 1px 6px;
     border-radius: 4px;

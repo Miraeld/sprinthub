@@ -1,6 +1,6 @@
 import React from 'react';
 import { BoardItem, CIState, ReviewInfo } from '../../src/types';
-import { STALE_THRESHOLD_DAYS } from '../constants';
+import { LARGE_PR_THRESHOLD, STALE_THRESHOLD_DAYS } from '../constants';
 
 interface Props {
   item: BoardItem;
@@ -135,10 +135,28 @@ function BranchIcon() {
   );
 }
 
+// ── Quality flags (card-level subset, no body/files needed) ──────────────────
+
+interface CardQualityFlag {
+  label: string;
+  color: string;
+}
+
+function computeCardQualityFlags(item: BoardItem): CardQualityFlag[] {
+  if (item.type !== 'PULL_REQUEST' || item.isDraft) return [];
+  const flags: CardQualityFlag[] = [];
+  const totalLines = (item.additions ?? 0) + (item.deletions ?? 0);
+  if (totalLines > LARGE_PR_THRESHOLD) {
+    flags.push({ label: `Large · ${totalLines} lines`, color: '#f38ba8' });
+  }
+  return flags.slice(0, 2);
+}
+
 // ── Main component ────────────────────────────────────────
 
 export function ItemCard({ item, onSelect, onOpenUrl }: Props) {
   const isPR = item.type === 'PULL_REQUEST';
+  const qualityFlags = computeCardQualityFlags(item);
   const daysSinceUpdate = (Date.now() - new Date(item.updatedAt).getTime()) / 86_400_000;
   const isStale = daysSinceUpdate > STALE_THRESHOLD_DAYS;
 
@@ -204,6 +222,18 @@ export function ItemCard({ item, onSelect, onOpenUrl }: Props) {
                 </span>
               );
             })}
+
+            {/* Quality flag chips (PR only) */}
+            {qualityFlags.map((f) => (
+              <span
+                key={f.label}
+                className="card-quality-flag"
+                style={{ color: f.color, borderColor: f.color + '55', background: f.color + '18' }}
+                title={f.label}
+              >
+                {f.label}
+              </span>
+            ))}
 
             {/* Meta: right side */}
             <span className="item-meta">
