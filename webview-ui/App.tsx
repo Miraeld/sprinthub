@@ -2217,7 +2217,10 @@ export function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<FilterTab>('dashboard');
-  const [sprintFilter, setSprintFilter] = useState<string | null>(null);
+  const [sprintFilter, setSprintFilter] = useState<string | null>(() => {
+    const saved = vscodeApi.getState() as { sprintFilter?: string | null } | undefined;
+    return saved?.sprintFilter ?? null;
+  });
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -2251,10 +2254,14 @@ export function App() {
           setData(msg.payload);
           setState('data');
           setIsRefreshing(false);
-          // Auto-select the latest sprint (sprints are sorted numeric desc so [0] is the highest)
-          if (msg.payload.sprints.length > 0) {
-            setSprintFilter((prev) => prev ?? msg.payload.sprints[0]);
-          }
+          // Validate the restored sprint filter against the incoming sprint list.
+          // A stale value (different project or archived sprint) is reset to the
+          // latest sprint so the board never silently hides all cards.
+          setSprintFilter((prev) => {
+            if (msg.payload.sprints.length === 0) return null;
+            if (prev && msg.payload.sprints.includes(prev)) return prev;
+            return msg.payload.sprints[0];
+          });
           break;
         case 'error':
           setErrorMsg(msg.message);
@@ -2333,6 +2340,12 @@ export function App() {
     vscodeApi.postMessage({ type: 'updateConfig', payload: cfg });
     setConfig(cfg);
   }, []);
+
+  // Persist sprint filter so it survives tab switches and panel re-opens
+  useEffect(() => {
+    const current = (vscodeApi.getState() as Record<string, unknown> | undefined) ?? {};
+    vscodeApi.setState({ ...current, sprintFilter });
+  }, [sprintFilter]);
 
   // Apply visual mode classes on both body and #root.
   // body → needed for body-level background/color overrides.
