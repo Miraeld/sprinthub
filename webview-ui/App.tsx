@@ -555,6 +555,22 @@ export function App() {
     vscodeApi.postMessage({ type: 'fetchRepoLabels', owner, repo });
   }, []);
 
+  // §1.8: Preload labels for all repos visible on the board after each data load.
+  // Fires in parallel for repos not yet in the cache so the label editor opens instantly.
+  useEffect(() => {
+    if (!data) return;
+    const allItems = [...Object.values(data.groups).flat(), ...(data.linkedIssuePRs ?? [])];
+    const seen = new Set<string>();
+    for (const item of allItems) {
+      if (!item.repositoryOwner || !item.repository) continue;
+      const key = `${item.repositoryOwner}/${item.repository}`;
+      if (seen.has(key) || repoLabelsCache.has(key)) continue;
+      seen.add(key);
+      vscodeApi.postMessage({ type: 'fetchRepoLabels', owner: item.repositoryOwner, repo: item.repository });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
   // v2: convert draft to ready
   const handleConvertDraftToReady = useCallback((itemId: string, owner: string, repo: string, prNumber: number) => {
     vscodeApi.postMessage({ type: 'convertDraftToReady', itemId, owner, repo, prNumber });
