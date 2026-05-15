@@ -213,19 +213,26 @@
   .content::-webkit-scrollbar-thumb:hover { background: #3a3a5d; }
 
   /* ─── Column group ────────────────────────── */
-  .col-group { margin-bottom: 2px; }
+  .col-group {
+    border: 1px solid #2a2a3d;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
 
   .col-header {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 20px;
+    padding: 7px 12px;
     cursor: pointer;
     transition: background 0.1s;
     user-select: none;
+    background: rgba(255,255,255,0.015);
+    border-bottom: 1px solid #1e1e2e;
   }
 
-  .col-header:hover { background: #1a1a28; }
+  .col-header:hover { background: rgba(255,255,255,0.03); }
 
   .col-chevron {
     color: #45475a;
@@ -261,7 +268,7 @@
     text-align: center;
   }
 
-  .col-items { padding: 2px 12px 8px; }
+  .col-items { padding: 0; }
 
   /* ─── Item card ───────────────────────────── */
   .item-card {
@@ -269,19 +276,17 @@
     grid-template-columns: 36px 52px 1fr 80px 30px 80px 140px;
     gap: 4px;
     align-items: center;
-    padding: 6px 12px;
-    margin-bottom: 4px;
-    background: #1e1e2d;
-    border: 1px solid #2a2a3d;
-    border-radius: 8px;
+    padding: 5px 12px;
+    border-bottom: 1px solid #1a1a2e;
     cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
-    min-height: 36px;
+    transition: background 0.12s;
+    min-height: 34px;
   }
 
+  .item-card:last-child { border-bottom: none; }
+
   .item-card:hover {
-    background: #252535;
-    border-color: #3d3d58;
+    background: rgba(137,180,250,0.06);
   }
 
   .item-card.keyboard-focused,
@@ -1937,21 +1942,6 @@
   body.light-theme .wave-p2 { fill: rgba(124,58,237,0.22); }
   body.light-theme .wave-p3 { fill: rgba(14,165,233,0.20); }
 
-  /* Specular sheen — suggests light refracting through glass */
-  .liquid-glass .item-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(
-      125deg,
-      rgba(255,255,255,0.18) 0%,
-      rgba(137,180,250,0.10) 22%,
-      rgba(203,166,247,0.07) 46%,
-      transparent 68%
-    );
-    pointer-events: none;
-  }
 
   #root.liquid-glass {
     position: relative;
@@ -2060,67 +2050,9 @@
   }
   .liquid-glass .col-group > * { position: relative; z-index: 1; }
 
-  /* Board item cards */
-  .liquid-glass .item-card {
-    /* No backdrop-filter here — moved to ::before so displacement only hits the
-       captured background layer, leaving card text completely undistorted */
-    border: 1.5px solid transparent;
-    background:
-      linear-gradient(rgba(16,16,36,0.10), rgba(16,16,36,0.10)) padding-box,
-      linear-gradient(155deg, rgba(255,255,255,0.44) 0%, rgba(255,255,255,0.06) 42%, rgba(0,0,0,0.26) 100%) border-box;
-    box-shadow:
-      0 6px 28px rgba(0,0,0,0.24),
-      0 1px 4px rgba(0,0,0,0.12),
-      inset 0 1.5px 0 rgba(255,255,255,0.26),
-      inset 0 -1px 0 rgba(0,0,0,0.20);
-    position: relative;
-    overflow: hidden;
-  }
-  /*
-    ::before captures the wave background via backdrop-filter then
-    displaces it with the lens filter — if Chromium applies filter
-    after compositing the backdrop, this gives background-only distortion.
-    Card content sits above via z-index and is never filtered.
-  */
-  .liquid-glass .item-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
-    -webkit-backdrop-filter: blur(10px) saturate(240%) brightness(1.06);
-    filter: url(#glass-distort);
-    /* Diagonal specular sheen combined into the same layer */
-    background: linear-gradient(
-      125deg,
-      rgba(255,255,255,0.16) 0%,
-      rgba(137,180,250,0.08) 22%,
-      rgba(203,166,247,0.05) 46%,
-      transparent 68%
-    );
-    z-index: 0;
-    pointer-events: none;
-  }
-  /* Top edge highlight sits above the displaced layer */
-  .liquid-glass .item-card::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28) 50%, transparent);
-    pointer-events: none;
-    z-index: 2;
-  }
-  /* All card children must sit above the displaced backdrop */
-  .liquid-glass .item-card > * { position: relative; z-index: 1; }
-  .liquid-glass .item-card:hover {
-    background:
-      linear-gradient(rgba(46,50,82,0.36), rgba(46,50,82,0.36)) padding-box,
-      linear-gradient(155deg, rgba(255,255,255,0.44) 0%, rgba(255,255,255,0.06) 42%, rgba(137,180,250,0.28) 100%) border-box;
-    box-shadow:
-      0 8px 36px rgba(0,0,0,0.32),
-      inset 0 1px 0 rgba(255,255,255,0.14);
-  }
+  /* Board item cards — flat rows matching lp-row style */
+  .liquid-glass .item-card { background: rgba(4,6,22,0.36); border-bottom-color: rgba(255,255,255,0.06); }
+  .liquid-glass .item-card:hover { background: rgba(137,180,250,0.09); }
 
   /* Dashboard PR groups */
   .liquid-glass .lp-group {
@@ -2361,23 +2293,8 @@
   }
   .light-theme.liquid-glass .col-name { color: #2a3468 !important; }
   .light-theme.liquid-glass .col-count { background: rgba(40,60,200,0.10) !important; border-color: rgba(40,60,200,0.20) !important; color: #3a4878 !important; }
-  .light-theme.liquid-glass .item-card {
-    backdrop-filter: blur(20px) saturate(160%) brightness(1.03) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(160%) brightness(1.03) !important;
-    border: 1.5px solid transparent !important;
-    background:
-      linear-gradient(rgba(255,255,255,0.72), rgba(255,255,255,0.72)) padding-box,
-      linear-gradient(155deg, rgba(255,255,255,0.98) 0%, rgba(200,215,255,0.25) 42%, rgba(60,80,200,0.18) 100%) border-box !important;
-    box-shadow: 0 4px 16px rgba(80,100,200,0.10), inset 0 1.5px 0 rgba(255,255,255,1.0) !important;
-  }
-  .light-theme.liquid-glass .item-card:hover {
-    background:
-      linear-gradient(rgba(225,232,255,0.80), rgba(225,232,255,0.80)) padding-box,
-      linear-gradient(155deg, rgba(255,255,255,0.98) 0%, rgba(180,200,255,0.35) 42%, rgba(30,66,245,0.22) 100%) border-box !important;
-  }
-  .light-theme.liquid-glass .item-title { color: #1e2550 !important; }
-  .light-theme.liquid-glass .item-num { color: #5060a0 !important; }
-  .light-theme.liquid-glass .repo-tag { color: #4858a0 !important; }
+  .light-theme.liquid-glass .item-card { background: rgba(255,255,255,0.46) !important; border-bottom-color: rgba(100,130,255,0.15) !important; }
+  .light-theme.liquid-glass .item-card:hover { background: rgba(210,222,255,0.60) !important; }
   .light-theme.liquid-glass .stale-badge {
     background: #f9e2af22 !important;
     border-color: #d4980088 !important;
@@ -2590,29 +2507,24 @@
   .light-theme .col-group {
     background: #e6e9ef;
     border: 1px solid #bcc0cc;
+    border-radius: 10px;
+    overflow: hidden;
     box-shadow: 0 1px 4px rgba(76,79,105,0.06);
   }
-  .light-theme .col-group-header {
-    background: #e6e9ef !important;
-    border-bottom-color: #bcc0cc !important;
-    color: #4c4f69;
+  .light-theme .col-header {
+    background: #e6e9ef;
+    border-bottom-color: #bcc0cc;
   }
-  .light-theme .col-header-title { color: #4c4f69; }
+  .light-theme .col-header:hover { background: #dce0e8; }
   .light-theme .col-name { color: #4c4f69; }
-  .light-theme .col-header-count {
+  .light-theme .col-count {
     background: #ccd0da;
+    border-color: #bcc0cc;
     color: #5c5f77;
   }
   .light-theme .board-scroll { background: #dce0e8; }
-  .light-theme .item-card {
-    background: #eff1f5 !important;
-    border-color: #bcc0cc !important;
-    box-shadow: 0 1px 3px rgba(76,79,105,0.07);
-  }
-  .light-theme .item-card:hover { background: #e6e9ef !important; border-color: #1e66f5 !important; }
-  .light-theme .item-title { color: #4c4f69; }
-  .light-theme .item-meta { color: #6c6f85; }
-  .light-theme .item-label { background: #ccd0da; color: #4c4f69; border-color: #bcc0cc; }
+  .light-theme .item-card { border-bottom-color: #ccd0da; }
+  .light-theme .item-card:hover { background: rgba(76,79,105,0.06); }
   .light-theme .footer {
     background: #e6e9ef !important;
     border-top-color: #bcc0cc !important;
