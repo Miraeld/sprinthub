@@ -765,6 +765,26 @@ interface RawSearchIssue {
   repository_url: string;
 }
 
+interface RawGitHubEvent {
+  type: string;
+  created_at: string;
+  repo: { name: string };
+  payload: {
+    action?: string;
+    issue?: {
+      number: number;
+      title: string;
+      html_url: string;
+      pull_request?: unknown;
+    };
+    pull_request?: {
+      number: number;
+      title: string;
+      html_url: string;
+    };
+  };
+}
+
 export async function generateStandupData(viewerLogin: string): Promise<{ data: StandupData; markdown: string }> {
   const token = await getToken();
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -781,10 +801,46 @@ export async function generateStandupData(viewerLogin: string): Promise<{ data: 
     return json.items ?? [];
   }
 
+  async function fetchCommentedItems(): Promise<RawSearchIssue[]> {
+    const resp = await fetch(
+      `https://api.github.com/users/${viewerLogin}/events?per_page=100`,
+      { headers: { Authorization: `bearer ${token}`, Accept: 'application/vnd.github+json' } }
+    );
+    if (!resp.ok) return [];
+    const events = (await resp.json()) as RawGitHubEvent[];
+
+    const seenUrls = new Set<string>();
+    const items: RawSearchIssue[] = [];
+
+    for (const event of events) {
+      // Events are newest-first — stop once we're past the 24h window
+      if (event.created_at < yesterday) break;
+
+      const isMyComment =
+        (event.type === 'IssueCommentEvent' && event.payload.action === 'created') ||
+        (event.type === 'PullRequestReviewCommentEvent' && event.payload.action === 'created') ||
+        event.type === 'PullRequestReviewEvent';
+      if (!isMyComment) continue;
+
+      const target = event.payload.issue ?? event.payload.pull_request;
+      if (!target || seenUrls.has(target.html_url)) continue;
+      seenUrls.add(target.html_url);
+
+      items.push({
+        number: target.number,
+        title: target.title,
+        html_url: target.html_url,
+        repository_url: `https://api.github.com/repos/${event.repo.name}`,
+        pull_request: (event.payload.pull_request ?? event.payload.issue?.pull_request) ? { merged_at: null } : undefined,
+      });
+    }
+    return items;
+  }
+
   const [mergedPRs, openPRs, commentedItems] = await Promise.all([
     search(`is:pr is:merged author:${viewerLogin} merged:>${yesterday}`),
     search(`is:pr is:open author:${viewerLogin} updated:>${yesterday}`),
-    search(`commenter:${viewerLogin} updated:>${yesterday}`),
+    fetchCommentedItems(),
   ]);
 
   // Remove items already listed in merged/open from the commented section
