@@ -158,11 +158,11 @@
     "eslint": "^8.0.0",
     "eslint-plugin-react": "^7.0.0",
     "eslint-plugin-react-hooks": "^4.0.0",
+    "tailwindcss": "^4.3.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "tailwindcss": "^4.3.0"
+    "react-dom": "^18.0.0"
   }
 }
