@@ -2459,7 +2459,7 @@
   .light-theme.liquid-glass .standup-p { color: #4858a0 !important; }
 
   /* su-* rich standup view — light theme */
-  .light-theme.liquid-glass .su-date { color: #6070a8 !important; }
+  .light-theme.liquid-glass .su-date { color: #2a3878 !important; }
   .light-theme.liquid-glass .su-section-title { color: #1a2050 !important; }
   .light-theme.liquid-glass .su-section-count {
     background: rgba(60,80,200,0.10) !important;
