@@ -125,6 +125,12 @@ export function App() {
     const saved = vscodeApi.getState() as { sprintFilter?: string | null } | undefined;
     return saved?.sprintFilter ?? null;
   });
+  // Auto-select the first sprint only on the very first data load (when the user
+  // has never interacted with the sprint picker). Once the user explicitly sets
+  // or clears the filter it should never be overridden by a background refresh.
+  const sprintNeedsAutoSelect = React.useRef(
+    (vscodeApi.getState() as { sprintFilter?: string | null } | undefined)?.sprintFilter === undefined
+  );
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -162,10 +168,18 @@ export function App() {
           // Validate the restored sprint filter against the incoming sprint list.
           // A stale value (different project or archived sprint) is reset to the
           // latest sprint so the board never silently hides all cards.
+          // Auto-select only fires once (first-ever data load); after that we
+          // respect whatever the user set, including an explicit null ("show all").
+          const autoSelect = sprintNeedsAutoSelect.current;
+          if (autoSelect) sprintNeedsAutoSelect.current = false;
           setSprintFilter((prev) => {
             if (msg.payload.sprints.length === 0) return null;
-            if (prev && msg.payload.sprints.includes(prev)) return prev;
-            return msg.payload.sprints[0];
+            if (prev !== null) {
+              // Keep a valid selection; reset a stale one to the first sprint.
+              return msg.payload.sprints.includes(prev) ? prev : msg.payload.sprints[0];
+            }
+            // prev === null: first-ever load → auto-select; otherwise user chose "show all"
+            return autoSelect ? msg.payload.sprints[0] : null;
           });
           // Keep the open detail panel in sync with refreshed board data.
           // Scan groups with early exit instead of flattening to avoid
