@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BoardItem, CheckRun, CIState, GHLabel, GHUser, LinkedPR, PRFile, RunwayData, ReviewInfo } from './types';
+import { BoardItem, CheckRun, CIState, GHLabel, GHUser, LinkedPR, PRFile, RateLimit, RunwayData, ReviewInfo } from './types';
 
 const GH_GRAPHQL = 'https://api.github.com/graphql';
 
@@ -80,6 +80,7 @@ query GetRepoOpenPRs($owner: String!, $repo: String!, $cursor: String) {
 // Note: body is NOT fetched here (too large) — loaded on demand via fetchItemBody
 const PROJECT_ITEMS_QUERY = `
 query GetProjectItems($login: String!, $number: Int!, $isOrg: Boolean!, $cursor: String) {
+  rateLimit { remaining limit resetAt }
   viewer { login }
   org: organization(login: $login) @include(if: $isOrg) {
     projectV2(number: $number) {
@@ -484,7 +485,14 @@ export async function fetchProjectData(
   let viewerLogin = '';
   let cursor: string | null = null;
 
-  type ProjectResponse = { viewer: { login: string }; org?: { projectV2: ProjectData }; user?: { projectV2: ProjectData } };
+  type ProjectResponse = {
+    rateLimit?: RateLimit;
+    viewer: { login: string };
+    org?: { projectV2: ProjectData };
+    user?: { projectV2: ProjectData };
+  };
+  let lastRateLimit: RateLimit | undefined;
+
   do {
     const data: ProjectResponse = await graphql<ProjectResponse>(
       token,
@@ -492,6 +500,7 @@ export async function fetchProjectData(
       { login: owner, number: projectNumber, isOrg, cursor }
     );
 
+    if (data.rateLimit) lastRateLimit = data.rateLimit;
     if (!viewerLogin) viewerLogin = data.viewer?.login ?? '';
 
     const project: ProjectData | undefined = isOrg ? data.org?.projectV2 : data.user?.projectV2;
@@ -559,6 +568,7 @@ export async function fetchProjectData(
     totalCount,
     viewerLogin,
     linkedIssuePRs,
+    rateLimit: lastRateLimit,
   };
 }
 

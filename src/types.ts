@@ -70,6 +70,12 @@ export interface BoardItem {
   closingIssueNumbers?: number[]; // issue numbers this PR closes
 }
 
+export interface RateLimit {
+  remaining: number;
+  limit: number;
+  resetAt: string; // ISO timestamp
+}
+
 export interface RunwayData {
   projectTitle: string;
   columns: string[];
@@ -80,6 +86,7 @@ export interface RunwayData {
   viewerLogin: string;
   /** Open PRs linked to board issues via closingPullRequests (Closes #N syntax) */
   linkedIssuePRs: BoardItem[];
+  rateLimit?: RateLimit;
 }
 
 export interface RunwayConfig {
