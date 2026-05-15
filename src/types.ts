@@ -117,6 +117,31 @@ export interface RepoLabel {
   color: string;
 }
 
+// Phase 3 — Structured standup data
+export interface StandupItem {
+  number: number;
+  title: string;
+  url: string;
+  isPR: boolean;
+}
+
+export interface StandupRepoGroup {
+  repo: string; // "owner/repo"
+  items: StandupItem[];
+}
+
+export interface StandupSection {
+  key: string;
+  icon: string;
+  title: string;
+  groups: StandupRepoGroup[];
+}
+
+export interface StandupData {
+  date: string;
+  sections: StandupSection[];
+}
+
 // Messages: extension → webview
 export type ExtensionMessage =
   | { type: 'loading' }
@@ -130,7 +155,7 @@ export type ExtensionMessage =
   // Phase 2
   | { type: 'conflictThreats'; threats: ConflictThreat[] }
   // Phase 3
-  | { type: 'standup'; markdown: string }
+  | { type: 'standup'; data: StandupData; markdown: string }
   | { type: 'metadataUpdated'; itemId: string; labels: GHLabel[]; assignees: GHUser[] }
   | { type: 'repoLabels'; owner: string; repo: string; labels: GHLabel[] }
   // v2 extras
