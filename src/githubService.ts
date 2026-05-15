@@ -783,7 +783,7 @@ export async function generateStandupData(viewerLogin: string): Promise<{ data: 
 
   const [mergedPRs, openPRs, commentedItems] = await Promise.all([
     search(`is:pr is:merged author:${viewerLogin} merged:>${yesterday}`),
-    search(`is:pr is:open author:${viewerLogin}`),
+    search(`is:pr is:open author:${viewerLogin} updated:>${yesterday}`),
     search(`commenter:${viewerLogin} updated:>${yesterday}`),
   ]);
 

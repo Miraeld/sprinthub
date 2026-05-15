@@ -140,6 +140,7 @@ export interface StandupSection {
 export interface StandupData {
   date: string;
   sections: StandupSection[];
+  error?: string;
 }
 
 // Messages: extension → webview

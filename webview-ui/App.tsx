@@ -38,11 +38,10 @@ function getColumnConfig(name: string) {
 
 // ── Standup rich view ──────────────────────────────────────────────────────────
 
-function StandupRepoGroupView({ group, onOpenUrl }: { group: StandupRepoGroup; onOpenUrl: (url: string) => void }) {
-  const [open, setOpen] = useState(true);
+function StandupRepoGroupView({ group, open, onToggle, onOpenUrl }: { group: StandupRepoGroup; open: boolean; onToggle: () => void; onOpenUrl: (url: string) => void }) {
   return (
     <div className="su-repo-group">
-      <button className="su-repo-header" onClick={() => setOpen((v) => !v)}>
+      <button className="su-repo-header" aria-expanded={open} onClick={onToggle}>
         <svg
           className={`su-repo-chevron${open ? ' open' : ''}`}
           width="11" height="11" viewBox="0 0 24 24" fill="none"
@@ -91,7 +90,7 @@ function StandupRepoGroupView({ group, onOpenUrl }: { group: StandupRepoGroup; o
   );
 }
 
-function StandupSectionView({ section, onOpenUrl }: { section: StandupSection; onOpenUrl: (url: string) => void }) {
+function StandupSectionView({ section, openMap, onToggle, onOpenUrl }: { section: StandupSection; openMap: Map<string, boolean>; onToggle: (repo: string) => void; onOpenUrl: (url: string) => void }) {
   const total = section.groups.reduce((s, g) => s + g.items.length, 0);
   return (
     <div className="su-section">
@@ -101,21 +100,37 @@ function StandupSectionView({ section, onOpenUrl }: { section: StandupSection; o
         <span className="su-section-count">{total}</span>
       </div>
       {section.groups.map((group) => (
-        <StandupRepoGroupView key={group.repo} group={group} onOpenUrl={onOpenUrl} />
+        <StandupRepoGroupView
+          key={group.repo}
+          group={group}
+          open={openMap.get(group.repo) ?? true}
+          onToggle={() => onToggle(group.repo)}
+          onOpenUrl={onOpenUrl}
+        />
       ))}
     </div>
   );
 }
 
 function StandupView({ data, onOpenUrl }: { data: StandupData; onOpenUrl: (url: string) => void }) {
+  const [openMap, setOpenMap] = useState<Map<string, boolean>>(() => new Map());
+  const handleToggle = (repo: string) => {
+    setOpenMap((prev) => {
+      const next = new Map(prev);
+      next.set(repo, !(prev.get(repo) ?? true));
+      return next;
+    });
+  };
   return (
     <div className="standup-rendered">
       <div className="su-date">{data.date}</div>
-      {data.sections.length === 0 ? (
+      {data.error ? (
+        <p className="standup-p" style={{ color: '#f38ba8', fontStyle: 'italic' }}>Error: {data.error}</p>
+      ) : data.sections.length === 0 ? (
         <p className="standup-p" style={{ color: '#6c7086', fontStyle: 'italic' }}>No activity found in the last 24 hours.</p>
       ) : (
         data.sections.map((section) => (
-          <StandupSectionView key={section.key} section={section} onOpenUrl={onOpenUrl} />
+          <StandupSectionView key={section.key} section={section} openMap={openMap} onToggle={handleToggle} onOpenUrl={onOpenUrl} />
         ))
       )}
     </div>

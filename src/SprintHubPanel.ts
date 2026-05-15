@@ -491,7 +491,7 @@ export class SprintHubPanel {
       this._post({ type: 'standup', data, markdown });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this._post({ type: 'standup', data: { date: '', sections: [] }, markdown: `*Error generating standup: ${msg}*` });
+      this._post({ type: 'standup', data: { date: '', sections: [], error: msg }, markdown: `*Error generating standup: ${msg}*` });
     }
   }
 
