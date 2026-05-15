@@ -444,9 +444,14 @@ export function App() {
       {/* SVG glass refraction filter — referenced via CSS filter: url(#glass-distort) */}
       <svg className="glass-filter-svg" aria-hidden="true">
         <defs>
-          <filter id="glass-distort" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="linearRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.008" numOctaves="4" seed="5" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
+          {/*
+            Very-low-frequency fractal noise creates a smooth, organic lens distortion.
+            scale=4 means ≤4px displacement — wave colours behind glass appear refracted,
+            text at 12-13px is imperceptibly shifted (<1px typical).
+          */}
+          <filter id="glass-distort" x="-6%" y="-6%" width="112%" height="112%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.003 0.002" numOctaves="2" seed="42" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
