@@ -161,12 +161,15 @@ export function App() {
     const saved = vscodeApi.getState() as { sprintFilter?: string | null } | undefined;
     return saved?.sprintFilter ?? null;
   });
-  // Auto-select the first sprint only on the very first data load (when the user
-  // has never interacted with the sprint picker). Once the user explicitly sets
-  // or clears the filter it should never be overridden by a background refresh.
+  // Auto-select the first sprint only once, deferred to dataComplete so the full
+  // sprint list (all pages) is known before committing. Once the user explicitly
+  // sets or clears the filter it must never be overridden by a background refresh.
   const sprintNeedsAutoSelect = React.useRef(
     (vscodeApi.getState() as { sprintFilter?: string | null } | undefined)?.sprintFilter === undefined
   );
+  // Always-current reference to data — used in dataComplete to access latest sprints
+  // without stale closure issues.
+  const dataRef = React.useRef<RunwayData | null>(null);
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -211,25 +214,27 @@ export function App() {
         case 'dataComplete':
           setIsLoadingMore(false);
           setIsRefreshing(false);
+          // Auto-select deferred here so the full sprint list (all pages) is known.
+          if (sprintNeedsAutoSelect.current && dataRef.current?.sprints.length) {
+            sprintNeedsAutoSelect.current = false;
+            const { sprints } = dataRef.current;
+            setSprintFilter((prev) => {
+              if (prev !== null) return sprints.includes(prev) ? prev : (sprints[0] ?? null);
+              return sprints[0] ?? null;
+            });
+          }
           break;
         case 'data': {
+          dataRef.current = msg.payload;
           setData(msg.payload);
           setState('data');
-          // Validate the restored sprint filter against the incoming sprint list.
-          // A stale value (different project or archived sprint) is reset to the
-          // latest sprint so the board never silently hides all cards.
-          // Auto-select only fires once (first-ever data load); after that we
-          // respect whatever the user set, including an explicit null ("show all").
-          const autoSelect = sprintNeedsAutoSelect.current;
-          if (autoSelect) sprintNeedsAutoSelect.current = false;
+          // Only validate an existing selection against the incoming sprint list.
+          // Initial auto-select is deferred to dataComplete (full dataset).
           setSprintFilter((prev) => {
-            if (msg.payload.sprints.length === 0) return null;
-            if (prev !== null) {
-              // Keep a valid selection; reset a stale one to the first sprint.
-              return msg.payload.sprints.includes(prev) ? prev : msg.payload.sprints[0];
-            }
-            // prev === null: first-ever load → auto-select; otherwise user chose "show all"
-            return autoSelect ? msg.payload.sprints[0] : null;
+            const { sprints } = msg.payload;
+            if (prev === null) return null; // keep null until dataComplete auto-selects
+            if (sprints.length === 0) return null;
+            return sprints.includes(prev) ? prev : sprints[0];
           });
           // Keep the open detail panel in sync with refreshed board data.
           // Scan groups with early exit instead of flattening to avoid

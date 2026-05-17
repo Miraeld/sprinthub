@@ -42,7 +42,9 @@ export class SprintHubPanel {
   private _statusBarItem: vscode.StatusBarItem;
   private _lastData: RunwayData | undefined;
 
-  private static readonly CACHE_KEY = 'sprinthub.cachedData';
+  private static _cacheKey(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
+    return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
+  }
 
   public static createOrShow(extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
     const column = vscode.window.activeTextEditor
@@ -252,10 +254,13 @@ export class SprintHubPanel {
       return;
     }
 
-    // Show cached data immediately so the board is visible while fresh data loads
-    const cached = this._context.globalState.get<RunwayData>(SprintHubPanel.CACHE_KEY);
+    // Show cached data immediately so the board is visible while fresh data loads.
+    // Cache is scoped to the current config so switching projects never shows stale data.
+    const cacheKey = SprintHubPanel._cacheKey(owner, projectNumber, ownerType, statusFieldName);
+    const cached = this._context.globalState.get<RunwayData>(cacheKey);
     if (cached) {
       this._post({ type: 'data', payload: cached });
+      this._updateStatusBar(cached); // fix: status bar available immediately from cache
       this._post({ type: 'refreshing' });
     } else {
       this._post({ type: 'loading' });
@@ -274,13 +279,20 @@ export class SprintHubPanel {
         }
       );
       this._lastData = data;
-      // Persist for next open
-      void this._context.globalState.update(SprintHubPanel.CACHE_KEY, data);
-      // Background enrichment — post dataComplete when both finish
-      void Promise.all([
-        this._fetchLinkedPRsBackground(data.groups),
-        this._checkConflicts(data),
-      ]).finally(() => this._post({ type: 'dataComplete' }));
+      // Persist for next open — attach .catch() so a storage rejection doesn't go silent
+      this._context.globalState.update(cacheKey, data).then(undefined, (err: unknown) => {
+        console.error('SprintHub: cache write failed', err);
+      });
+      // Fetch linked PRs first, then run conflict check with the enriched dataset.
+      // Running conflicts on data.linkedIssuePRs=[] would miss linked-PR conflicts.
+      void (async () => {
+        try {
+          const linkedPRs = await this._fetchLinkedPRsBackground(data.groups);
+          await this._checkConflicts({ ...data, linkedIssuePRs: linkedPRs });
+        } finally {
+          this._post({ type: 'dataComplete' });
+        }
+      })();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this._post({ type: 'error', message: msg });
@@ -372,12 +384,13 @@ export class SprintHubPanel {
 
   // ─── Linked PRs background fetch ───────────────────────────────────────────
 
-  private async _fetchLinkedPRsBackground(groups: RunwayData['groups']) {
+  private async _fetchLinkedPRsBackground(groups: RunwayData['groups']): Promise<BoardItem[]> {
     try {
       const prs = await fetchLinkedPRsForBoard(groups);
       this._post({ type: 'linkedIssuePRs', prs });
+      return prs;
     } catch {
-      // best-effort — Dashboard just shows no linked PRs
+      return []; // best-effort — Dashboard shows no linked PRs, conflict check still runs
     }
   }
 

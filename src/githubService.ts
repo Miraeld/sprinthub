@@ -473,47 +473,24 @@ async function fetchLinkedPRsFromRepos(
   return Array.from(linkedPRMap.values());
 }
 
-function buildRunwayData(
-  nodes: RawProjectNode[],
-  statusFieldName: string,
+/** Assembles a RunwayData snapshot from already-parsed groups and sprints. */
+function assembleRunwayData(
+  groups: Record<string, BoardItem[]>,
+  sprintsSet: Set<string>,
   projectTitle: string,
   viewerLogin: string,
   rateLimit: RateLimit | undefined
 ): RunwayData {
-  const groups: Record<string, BoardItem[]> = {};
-  const sprintsSet = new Set<string>();
-
-  for (const node of nodes) {
-    const column = extractColumn(node, statusFieldName);
-    const item = parseItem(node, column);
-    if (!item) continue;
-    if (!groups[column]) groups[column] = [];
-    groups[column].push(item);
-    if (item.sprint) sprintsSet.add(item.sprint);
-  }
-
   const colOrderLower = COLUMN_ORDER.map((c) => c.toLowerCase());
   const knownPresent = Object.keys(groups)
     .filter((c) => colOrderLower.includes(c.toLowerCase()))
     .sort((a, b) => colOrderLower.indexOf(a.toLowerCase()) - colOrderLower.indexOf(b.toLowerCase()));
   const extras = Object.keys(groups).filter((c) => !colOrderLower.includes(c.toLowerCase()));
   const columns = [...knownPresent, ...extras];
-
   const totalCount = Object.values(groups).reduce((sum, items) => sum + items.length, 0);
   const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
   const sprints = Array.from(sprintsSet).sort((a, b) => collator.compare(b, a));
-
-  return {
-    projectTitle,
-    columns,
-    groups,
-    sprints,
-    lastUpdated: new Date().toISOString(),
-    totalCount,
-    viewerLogin,
-    linkedIssuePRs: [],
-    rateLimit,
-  };
+  return { projectTitle, columns, groups, sprints, lastUpdated: new Date().toISOString(), totalCount, viewerLogin, linkedIssuePRs: [], rateLimit };
 }
 
 /**
@@ -521,6 +498,8 @@ function buildRunwayData(
  * `onPage` is called after each paginated response so the caller can render
  * partial data immediately — the board appears after the first ~100 items
  * rather than waiting for the full dataset to arrive.
+ * Groups and sprints are accumulated incrementally so each page only parses
+ * its own new nodes (O(n) total, not O(n²)).
  */
 export async function fetchProjectData(
   owner: string,
@@ -530,7 +509,6 @@ export async function fetchProjectData(
   onPage?: (partial: RunwayData) => void
 ): Promise<RunwayData> {
   const token = await getToken();
-  const allNodes: RawProjectNode[] = [];
   let projectTitle = '';
   let viewerLogin = '';
   let cursor: string | null = null;
@@ -542,6 +520,10 @@ export async function fetchProjectData(
     user?: { projectV2: ProjectData };
   };
   let lastRateLimit: RateLimit | undefined;
+
+  // Incremental state — only new nodes per page are parsed and appended
+  const groups: Record<string, BoardItem[]> = {};
+  const sprintsSet = new Set<string>();
 
   do {
     const data: ProjectResponse = await graphql<ProjectResponse>(
@@ -559,17 +541,25 @@ export async function fetchProjectData(
     }
 
     projectTitle = project.title;
-    allNodes.push(...project.items.nodes);
+
+    for (const node of project.items.nodes) {
+      const column = extractColumn(node, statusFieldName);
+      const item = parseItem(node, column);
+      if (!item) continue;
+      if (!groups[column]) groups[column] = [];
+      groups[column].push(item);
+      if (item.sprint) sprintsSet.add(item.sprint);
+    }
 
     cursor = project.items.pageInfo.hasNextPage
       ? project.items.pageInfo.endCursor
       : null;
 
-    // Deliver partial data after each page so the board renders immediately
-    onPage?.(buildRunwayData(allNodes, statusFieldName, projectTitle, viewerLogin, lastRateLimit));
+    // Deliver snapshot after each page — assembleRunwayData is O(columns), not O(items)
+    onPage?.(assembleRunwayData(groups, sprintsSet, projectTitle, viewerLogin, lastRateLimit));
   } while (cursor !== null);
 
-  return buildRunwayData(allNodes, statusFieldName, projectTitle, viewerLogin, lastRateLimit);
+  return assembleRunwayData(groups, sprintsSet, projectTitle, viewerLogin, lastRateLimit);
 }
 
 /**
