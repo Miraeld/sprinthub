@@ -994,55 +994,78 @@ export function App() {
                 onSelect={handleSelectItem}
                 onOpenUrl={handleOpenUrl}
               />
-            ) : tab === 'milestones' ? (
-              /* Milestones view */
-              Object.keys(milestoneGroups).length === 0 ? (
-                <div className="milestone-empty">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#45475a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 4l3 3-3 3"/><path d="M3 7h18"/>
-                    <path d="M6 20l-3-3 3-3"/><path d="M21 17H3"/>
-                  </svg>
-                  No milestones found
-                </div>
-              ) : (
-                Object.entries(milestoneGroups)
-                  .sort(([a], [b]) => {
-                    if (a === '(No Milestone)') return -1;
-                    if (b === '(No Milestone)') return 1;
-                    const parts = (s: string) => s.split('.').map((n) => parseInt(n, 10) || 0);
-                    const ap = parts(a), bp = parts(b);
-                    for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
-                      const diff = (bp[i] ?? 0) - (ap[i] ?? 0);
-                      if (diff !== 0) return diff;
-                    }
-                    return 0;
-                  })
-                  .map(([milestone, items]) => (
-                  <ColumnGroup
-                    key={milestone}
-                    column={milestone}
-                    items={items}
-                    config={{ color: '#cba6f7', emoji: '⬡' }}
-                    onSelect={handleSelectItem}
-                    onOpenUrl={handleOpenUrl}
-                  />
-                ))
-              )
             ) : (
-              /* Board view */
-              data.columns.map((col) => {
-                const items = filteredGroups[col] ?? [];
-                return (
-                  <ColumnGroup
-                    key={col}
-                    column={col}
-                    items={items}
-                    config={getColumnConfig(col)}
-                    onSelect={handleSelectItem}
-                    onOpenUrl={handleOpenUrl}
-                  />
-                );
-              })
+              /* Main Board / PRs / Issues / Milestones — uniform layout matching Dashboard */
+              <div className="lp-wrap">
+                <div className="lp-toolbar">
+                  <span className="lp-count">
+                    {tab === 'milestones'
+                      ? `${Object.keys(milestoneGroups).length} milestone${Object.keys(milestoneGroups).length !== 1 ? 's' : ''}`
+                      : tab === 'prs'
+                      ? `${counts.prs} pull request${counts.prs !== 1 ? 's' : ''}`
+                      : tab === 'issues'
+                      ? `${counts.issues} issue${counts.issues !== 1 ? 's' : ''}`
+                      : `${counts.all} item${counts.all !== 1 ? 's' : ''}`}
+                  </span>
+                </div>
+                <div className="lp-header-row">
+                  <span className="lp-col-age">Age</span>
+                  <span className="lp-col-status">Status</span>
+                  <span className="lp-col-title">Item</span>
+                  <span className="lp-col-diff">Diff</span>
+                  <span className="lp-col-author">Auth</span>
+                  <span className="lp-col-collabs">Collaborators</span>
+                  <span className="lp-col-branch">Repo / Branch</span>
+                </div>
+                {tab === 'milestones' ? (
+                  Object.keys(milestoneGroups).length === 0 ? (
+                    <div className="milestone-empty">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#45475a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 4l3 3-3 3"/><path d="M3 7h18"/>
+                        <path d="M6 20l-3-3 3-3"/><path d="M21 17H3"/>
+                      </svg>
+                      No milestones found
+                    </div>
+                  ) : (
+                    Object.entries(milestoneGroups)
+                      .sort(([a], [b]) => {
+                        if (a === '(No Milestone)') return -1;
+                        if (b === '(No Milestone)') return 1;
+                        const parts = (s: string) => s.split('.').map((n) => parseInt(n, 10) || 0);
+                        const ap = parts(a), bp = parts(b);
+                        for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+                          const diff = (bp[i] ?? 0) - (ap[i] ?? 0);
+                          if (diff !== 0) return diff;
+                        }
+                        return 0;
+                      })
+                      .map(([milestone, items]) => (
+                        <ColumnGroup
+                          key={milestone}
+                          column={milestone}
+                          items={items}
+                          config={{ color: '#cba6f7', emoji: '⬡' }}
+                          onSelect={handleSelectItem}
+                          onOpenUrl={handleOpenUrl}
+                        />
+                      ))
+                  )
+                ) : (
+                  data.columns.map((col) => {
+                    const items = filteredGroups[col] ?? [];
+                    return (
+                      <ColumnGroup
+                        key={col}
+                        column={col}
+                        items={items}
+                        config={getColumnConfig(col)}
+                        onSelect={handleSelectItem}
+                        onOpenUrl={handleOpenUrl}
+                      />
+                    );
+                  })
+                )}
+              </div>
             )}
             {isLoadingMore && (
               <div className="skeleton-loading-more">
