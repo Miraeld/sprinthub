@@ -40,7 +40,6 @@ export class SprintHubPanel {
   private readonly _disposables: vscode.Disposable[] = [];
   private _refreshTimer: ReturnType<typeof setInterval> | undefined;
   private _statusBarItem: vscode.StatusBarItem;
-  private _lastData: RunwayData | undefined;
 
   private static _cacheKey(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
     return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
@@ -278,7 +277,6 @@ export class SprintHubPanel {
           this._updateStatusBar(partial);
         }
       );
-      this._lastData = data;
       // Persist for next open — attach .catch() so a storage rejection doesn't go silent
       this._context.globalState.update(cacheKey, data).then(undefined, (err: unknown) => {
         console.error('SprintHub: cache write failed', err);
@@ -288,7 +286,10 @@ export class SprintHubPanel {
       void (async () => {
         try {
           const linkedPRs = await this._fetchLinkedPRsBackground(data.groups);
-          await this._checkConflicts({ ...data, linkedIssuePRs: linkedPRs });
+          const enriched = { ...data, linkedIssuePRs: linkedPRs };
+          // Update status bar with the now-enriched PR list (linked PRs were [] before this point)
+          this._updateStatusBar(enriched);
+          await this._checkConflicts(enriched);
         } finally {
           this._post({ type: 'dataComplete' });
         }
