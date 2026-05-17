@@ -40,7 +40,6 @@ export class SprintHubPanel {
   private readonly _disposables: vscode.Disposable[] = [];
   private _refreshTimer: ReturnType<typeof setInterval> | undefined;
   private _statusBarItem: vscode.StatusBarItem;
-  private _lastData: RunwayData | undefined;
 
   private static _cacheKey(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
     return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
@@ -267,18 +266,22 @@ export class SprintHubPanel {
     }
 
     try {
+      const isRefresh = !!cached;
       const data = await fetchProjectData(
         owner,
         projectNumber,
         ownerType === 'organization',
         statusFieldName,
-        (partial) => {
-          // Deliver each page to the webview as it arrives
+        isRefresh ? undefined : (partial) => {
           this._post({ type: 'data', payload: partial });
           this._updateStatusBar(partial);
         }
       );
-      this._lastData = data;
+      if (isRefresh) {
+        // Post the complete fresh data atomically — no partial updates during refresh
+        this._post({ type: 'data', payload: data });
+        this._updateStatusBar(data);
+      }
       // Persist for next open — attach .catch() so a storage rejection doesn't go silent
       this._context.globalState.update(cacheKey, data).then(undefined, (err: unknown) => {
         console.error('SprintHub: cache write failed', err);
