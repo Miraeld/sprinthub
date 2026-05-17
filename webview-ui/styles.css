@@ -533,6 +533,17 @@
     gap: 0;
   }
 
+  .footer-updating {
+    margin-left: 8px;
+    color: #89b4fa;
+    animation: footerPulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes footerPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
 
   /* ─── Sprint select ───────────────────────── */
   .sprint-bar {

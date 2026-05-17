@@ -1094,6 +1094,7 @@ export function App() {
       {data && (
         <div className="footer">
           {formatLastUpdated(data.lastUpdated)}
+          {isLoadingMore && <span className="footer-updating">· updating</span>}
           {sprintFilter && <span style={{ marginLeft: 8, color: '#89b4fa' }}>· Sprint: {sprintFilter}</span>}
           {data.rateLimit && (() => {
             const { remaining, limit, resetAt } = data.rateLimit;
