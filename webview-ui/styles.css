@@ -2239,27 +2239,27 @@
   .liquid-glass .detail-gh-btn:hover { border-color: #89b4fa; color: #89b4fa; background: rgba(137,180,250,0.10); }
 
   /* Standup modal — overlay is just a dim scrim, blur lives on the modal only */
+  /* Overlay blurs the whole board; modal sits transparently on top */
   .liquid-glass .standup-overlay {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    background: rgba(0,0,0,0.28) !important;
+    backdrop-filter: blur(10px) saturate(150%) brightness(0.80) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(150%) brightness(0.80) !important;
+    background: rgba(0,0,0,0.22) !important;
   }
   .liquid-glass .standup-modal {
     position: relative !important;
     overflow: hidden !important;
-    /* brightness(0.88) darkens the blurred backdrop — same as the detail sidebar */
-    backdrop-filter: blur(80px) saturate(220%) brightness(0.88) !important;
-    -webkit-backdrop-filter: blur(80px) saturate(220%) brightness(0.88) !important;
+    /* No blur — overlay handles it; modal is transparent glass */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1.5px solid transparent !important;
-    /* Near-zero background — the backdrop-filter does all the work */
     background:
-      rgba(8,8,22,0.04) padding-box,
+      rgba(16,16,36,0.18) padding-box,
       linear-gradient(148deg,
         rgba(255,255,255,0.55) 0%,
         rgba(255,255,255,0.10) 40%,
         rgba(0,0,0,0.28) 100%) border-box !important;
     box-shadow:
-      0 48px 120px rgba(0,0,0,0.60),
+      0 32px 80px rgba(0,0,0,0.35),
       inset 0 2px 0 rgba(255,255,255,0.22),
       inset 6px 6px 40px rgba(100,160,255,0.04),
       inset -6px -6px 40px rgba(203,166,247,0.04) !important;
@@ -2513,24 +2513,23 @@
   }
 
   .light-theme.liquid-glass .standup-overlay {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    background: rgba(0,0,0,0.14) !important;
+    backdrop-filter: blur(10px) saturate(140%) brightness(1.08) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(140%) brightness(1.08) !important;
+    background: rgba(255,255,255,0.12) !important;
   }
   .light-theme.liquid-glass .standup-modal {
-    backdrop-filter: blur(80px) saturate(200%) brightness(1.04) !important;
-    -webkit-backdrop-filter: blur(80px) saturate(200%) brightness(1.04) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: 1.5px solid transparent !important;
     background:
-      rgba(240,244,255,0.05) padding-box,
+      rgba(240,244,255,0.20) padding-box,
       linear-gradient(148deg,
         rgba(255,255,255,1.0) 0%,
         rgba(200,220,255,0.30) 40%,
         rgba(80,100,200,0.16) 100%) border-box !important;
     box-shadow:
-      0 40px 100px rgba(60,80,200,0.18),
-      inset 0 2px 0 rgba(255,255,255,0.90),
-      inset 0 0 60px rgba(120,160,255,0.03) !important;
+      0 24px 60px rgba(60,80,200,0.18),
+      inset 0 2px 0 rgba(255,255,255,0.90) !important;
   }
   .light-theme.liquid-glass .standup-modal::before {
     background: linear-gradient(155deg, rgba(255,255,255,0.55) 0%, rgba(200,220,255,0.18) 38%, transparent 100%) !important;

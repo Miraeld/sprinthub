@@ -179,7 +179,7 @@ export function App() {
   const [prFiles, setPrFiles] = useState<PRFile[] | null>(null);
   // Phase 2: conflict threats
   const [conflictThreats, setConflictThreats] = useState<ConflictThreat[]>([]);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(true);
   // Phase 3: standup
   const [standupData, setStandupData] = useState<StandupData | null>(null);
   const [standupMarkdown, setStandupMarkdown] = useState<string | null>(null);
