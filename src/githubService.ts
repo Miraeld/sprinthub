@@ -473,14 +473,42 @@ async function fetchLinkedPRsFromRepos(
   return Array.from(linkedPRMap.values());
 }
 
+/** Assembles a RunwayData snapshot from already-parsed groups and sprints. */
+function assembleRunwayData(
+  groups: Record<string, BoardItem[]>,
+  sprintsSet: Set<string>,
+  projectTitle: string,
+  viewerLogin: string,
+  rateLimit: RateLimit | undefined
+): RunwayData {
+  const colOrderLower = COLUMN_ORDER.map((c) => c.toLowerCase());
+  const knownPresent = Object.keys(groups)
+    .filter((c) => colOrderLower.includes(c.toLowerCase()))
+    .sort((a, b) => colOrderLower.indexOf(a.toLowerCase()) - colOrderLower.indexOf(b.toLowerCase()));
+  const extras = Object.keys(groups).filter((c) => !colOrderLower.includes(c.toLowerCase()));
+  const columns = [...knownPresent, ...extras];
+  const totalCount = Object.values(groups).reduce((sum, items) => sum + items.length, 0);
+  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  const sprints = Array.from(sprintsSet).sort((a, b) => collator.compare(b, a));
+  return { projectTitle, columns, groups, sprints, lastUpdated: new Date().toISOString(), totalCount, viewerLogin, linkedIssuePRs: [], rateLimit };
+}
+
+/**
+ * Fetches all project items with progressive delivery.
+ * `onPage` is called after each paginated response so the caller can render
+ * partial data immediately — the board appears after the first ~100 items
+ * rather than waiting for the full dataset to arrive.
+ * Groups and sprints are accumulated incrementally so each page only parses
+ * its own new nodes (O(n) total, not O(n²)).
+ */
 export async function fetchProjectData(
   owner: string,
   projectNumber: number,
   isOrg: boolean,
-  statusFieldName: string
+  statusFieldName: string,
+  onPage?: (partial: RunwayData) => void
 ): Promise<RunwayData> {
   const token = await getToken();
-  const allNodes: RawProjectNode[] = [];
   let projectTitle = '';
   let viewerLogin = '';
   let cursor: string | null = null;
@@ -492,6 +520,11 @@ export async function fetchProjectData(
     user?: { projectV2: ProjectData };
   };
   let lastRateLimit: RateLimit | undefined;
+
+  // Incremental state — only new nodes per page are parsed and appended
+  const groups: Record<string, BoardItem[]> = {};
+  const sprintsSet = new Set<string>();
+  let pageCount = 0;
 
   do {
     const data: ProjectResponse = await graphql<ProjectResponse>(
@@ -509,67 +542,49 @@ export async function fetchProjectData(
     }
 
     projectTitle = project.title;
-    allNodes.push(...project.items.nodes);
 
-    if (project.items.pageInfo.hasNextPage) {
-      cursor = project.items.pageInfo.endCursor;
-    } else {
-      cursor = null;
+    for (const node of project.items.nodes) {
+      const column = extractColumn(node, statusFieldName);
+      const item = parseItem(node, column);
+      if (!item) continue;
+      if (!groups[column]) groups[column] = [];
+      groups[column].push(item);
+      if (item.sprint) sprintsSet.add(item.sprint);
+    }
+
+    cursor = project.items.pageInfo.hasNextPage
+      ? project.items.pageInfo.endCursor
+      : null;
+
+    pageCount++;
+    // Deliver page 1 immediately for fast first paint; throttle to every 3rd page
+    // after that to avoid re-serializing the full growing payload on every page.
+    if (onPage && (pageCount === 1 || pageCount % 3 === 0 || cursor === null)) {
+      onPage(assembleRunwayData(groups, sprintsSet, projectTitle, viewerLogin, lastRateLimit));
     }
   } while (cursor !== null);
 
-  // Group items by column; also build a map of issue number -> BoardItem for linking
-  const groups: Record<string, BoardItem[]> = {};
-  const sprintsSet = new Set<string>();
-  // key: `${owner}/${repo}` -> Map<issueNumber, BoardItem>
+  return assembleRunwayData(groups, sprintsSet, projectTitle, viewerLogin, lastRateLimit);
+}
+
+/**
+ * Fetches linked PRs for a board after the initial data is already rendered.
+ * Re-derives the issueByRepo index from the groups returned by fetchProjectData.
+ */
+export async function fetchLinkedPRsForBoard(groups: Record<string, BoardItem[]>): Promise<BoardItem[]> {
+  const token = await getToken();
   const issueByRepo = new Map<string, Map<number, BoardItem>>();
-
-  for (const node of allNodes) {
-    const column = extractColumn(node, statusFieldName);
-    const item = parseItem(node, column);
-    if (!item) continue;
-
-    if (!groups[column]) {
-      groups[column] = [];
-    }
-    groups[column].push(item);
-    if (item.sprint) sprintsSet.add(item.sprint);
-
-    // Track board issues by repo for later PR linking
-    if (item.type === 'ISSUE' && item.repositoryOwner && item.repository) {
-      const repoKey = `${item.repositoryOwner}/${item.repository}`;
-      if (!issueByRepo.has(repoKey)) issueByRepo.set(repoKey, new Map());
-      issueByRepo.get(repoKey)!.set(item.number, item);
+  for (const items of Object.values(groups)) {
+    for (const item of items) {
+      if (item.type === 'ISSUE' && item.repositoryOwner && item.repository) {
+        const repoKey = `${item.repositoryOwner}/${item.repository}`;
+        if (!issueByRepo.has(repoKey)) issueByRepo.set(repoKey, new Map());
+        issueByRepo.get(repoKey)!.set(item.number, item);
+      }
     }
   }
-
-  // Build ordered column list — case-insensitive so "Ready for review" matches "Ready For Review"
-  const colOrderLower = COLUMN_ORDER.map((c) => c.toLowerCase());
-  const knownPresent = Object.keys(groups)
-    .filter((c) => colOrderLower.includes(c.toLowerCase()))
-    .sort((a, b) => colOrderLower.indexOf(a.toLowerCase()) - colOrderLower.indexOf(b.toLowerCase()));
-  const extras = Object.keys(groups).filter((c) => !colOrderLower.includes(c.toLowerCase()));
-  const columns = [...knownPresent, ...extras];
-
-  const totalCount = Object.values(groups).reduce((sum, items) => sum + items.length, 0);
-  // Natural sort descending (Sprint 21 first, Sprint 1 last)
-  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-  const sprints = Array.from(sprintsSet).sort((a, b) => collator.compare(b, a));
-
-  // Fetch open PRs from each repo that has board issues, match by closingIssuesReferences
-  const linkedIssuePRs = await fetchLinkedPRsFromRepos(token, issueByRepo, groups);
-
-  return {
-    projectTitle,
-    columns,
-    groups,
-    sprints,
-    lastUpdated: new Date().toISOString(),
-    totalCount,
-    viewerLogin,
-    linkedIssuePRs,
-    rateLimit: lastRateLimit,
-  };
+  if (!issueByRepo.size) return [];
+  return fetchLinkedPRsFromRepos(token, issueByRepo, groups);
 }
 
 // Step 1: get linked PRs via closing references + timeline cross-references
@@ -1006,10 +1021,12 @@ export async function fetchCodeowners(
     return null;
   }
 
-  const content =
-    (await tryPath('.github/CODEOWNERS')) ??
-    (await tryPath('CODEOWNERS')) ??
-    (await tryPath('docs/CODEOWNERS'));
+  const [a, b, c] = await Promise.all([
+    tryPath('.github/CODEOWNERS'),
+    tryPath('CODEOWNERS'),
+    tryPath('docs/CODEOWNERS'),
+  ]);
+  const content = a ?? b ?? c;
 
   if (!content) return [];
 

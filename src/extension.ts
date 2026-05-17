@@ -13,7 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('sprinthub.open', () => {
-      SprintHubPanel.createOrShow(context.extensionUri);
+      SprintHubPanel.createOrShow(context.extensionUri, context);
     })
   );
 
