@@ -919,9 +919,22 @@ export function App() {
       {/* Content */}
       <div className="content">
         {state === 'loading' && (
-          <div className="center-state">
-            <div className="spinner" />
-            <span className="state-title">Loading project…</span>
+          <div className="skeleton-board">
+            {[0, 1, 2].map((gi) => (
+              <div key={gi} className="skeleton-group">
+                <div className="skeleton-col-header" />
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="skeleton-row" style={{ opacity: 1 - (gi * 4 + i) * 0.04 }}>
+                    <div className="skeleton-pulse sk-age" style={{ animationDelay: `${(gi * 4 + i) * 0.08}s` }} />
+                    <div className="skeleton-pulse sk-dots" style={{ animationDelay: `${(gi * 4 + i) * 0.08 + 0.1}s` }} />
+                    <div className="skeleton-pulse sk-title" style={{ width: `${55 + ((gi * 4 + i) * 17) % 35}%`, animationDelay: `${(gi * 4 + i) * 0.08 + 0.2}s` }} />
+                    <div className="skeleton-pulse sk-diff" style={{ animationDelay: `${(gi * 4 + i) * 0.08 + 0.3}s` }} />
+                    <div className="skeleton-pulse sk-avatar" style={{ animationDelay: `${(gi * 4 + i) * 0.08 + 0.4}s` }} />
+                    <div className="skeleton-pulse sk-avatar2" style={{ animationDelay: `${(gi * 4 + i) * 0.08 + 0.5}s` }} />
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         )}
 

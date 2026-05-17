@@ -456,6 +456,54 @@
   .state-sub   { color: #6c7086; font-size: 12px; line-height: 1.6; }
   .state-err   { color: #f38ba8; }
 
+  /* Glass skeleton — Ein UI glass-skeleton pattern */
+  .skeleton-board {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 16px;
+    flex: 1;
+  }
+  .skeleton-group {
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .skeleton-col-header {
+    height: 34px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .skeleton-row {
+    display: grid;
+    grid-template-columns: 34px 36px 1fr 80px 28px 28px;
+    gap: 10px;
+    align-items: center;
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .skeleton-row:last-child { border-bottom: none; }
+  .skeleton-pulse {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+  }
+  .skeleton-pulse::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+    background-size: 400% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+  .sk-age   { height: 11px; }
+  .sk-dots  { height: 11px; }
+  .sk-title { height: 11px; }
+  .sk-diff  { height: 11px; border-radius: 4px; }
+  .sk-avatar { height: 22px; border-radius: 50%; }
+  .sk-avatar2 { height: 22px; border-radius: 50%; }
+
   .empty-group {
     padding: 16px 20px;
     color: #45475a;
@@ -1916,6 +1964,10 @@
     0%, 100% { opacity: 0.75; }
     50%       { opacity: 1; }
   }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
 
   body.liquid-glass {
     background:
@@ -2045,7 +2097,52 @@
   .liquid-glass .lp-num { color: #8898cc !important; }
   .liquid-glass .lp-repo { color: #8898c8 !important; }
   .liquid-glass .lp-branch-name { color: #7888bc !important; }
-  .liquid-glass .lp-draft-badge { background: rgba(255,255,255,0.10) !important; color: #9aa8d0 !important; }
+  /* Glass skeleton enhancement */
+  .liquid-glass .skeleton-pulse {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .liquid-glass .skeleton-pulse::before {
+    background: linear-gradient(90deg, transparent 0%, rgba(137,180,250,0.12) 50%, transparent 100%);
+    background-size: 400% 100%;
+  }
+  .liquid-glass .skeleton-group {
+    border-color: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.01);
+  }
+  .liquid-glass .skeleton-col-header { background: rgba(255,255,255,0.04); }
+
+  /* Glass labels & badges — Ein UI glass-badge pattern */
+  .liquid-glass .label {
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    transition: all 0.2s ease;
+  }
+  .liquid-glass .badge-sprint,
+  .liquid-glass .badge-milestone {
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .liquid-glass .badge-sprint {
+    background: rgba(137,180,250,0.12) !important;
+    border-color: rgba(137,180,250,0.30) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 8px rgba(137,180,250,0.12);
+  }
+  .liquid-glass .badge-milestone {
+    background: rgba(203,166,247,0.12) !important;
+    border-color: rgba(203,166,247,0.30) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 8px rgba(203,166,247,0.12);
+  }
+  .liquid-glass .lp-draft-badge {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+    color: #9aa8d0 !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+  }
 
   /* Board column groups */
   .liquid-glass .col-group {
@@ -2413,6 +2510,22 @@
   .light-theme.liquid-glass .merge-dropdown-item-preferred { background: rgba(30,66,245,0.06) !important; }
   .light-theme.liquid-glass .merge-dropdown-label { color: #2a3468 !important; }
   .light-theme.liquid-glass .merge-dropdown-desc { color: #5060a0 !important; }
+  .light-theme.liquid-glass .badge-sprint {
+    background: rgba(30,102,245,0.10) !important;
+    border-color: rgba(30,102,245,0.28) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.50), 0 2px 8px rgba(30,102,245,0.10);
+  }
+  .light-theme.liquid-glass .badge-milestone {
+    background: rgba(136,57,239,0.08) !important;
+    border-color: rgba(136,57,239,0.26) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.50), 0 2px 8px rgba(136,57,239,0.10);
+  }
+  .light-theme.liquid-glass .lp-draft-badge {
+    background: rgba(140,143,161,0.12) !important;
+    border: 1px solid rgba(140,143,161,0.22) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.50);
+  }
+
   .light-theme.liquid-glass .standup-modal {
     border: 1.5px solid transparent !important;
     background:
