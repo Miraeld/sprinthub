@@ -1717,18 +1717,20 @@
   /* ── Phase 3: Standup Modal ──────────────────── */
   .standup-overlay {
     position: fixed; inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(14px) saturate(180%);
-    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    /* Overlay blurs the board; modal sits transparently on top */
+    background: rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(10px) saturate(160%) brightness(0.82);
+    -webkit-backdrop-filter: blur(10px) saturate(160%) brightness(0.82);
     z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px;
   }
   .standup-modal {
-    background: #18182c;
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(16, 18, 44, 0.18);
+    backdrop-filter: none;
+    border: 1.5px solid rgba(255,255,255,0.12);
     border-radius: 14px;
     width: 580px; max-width: 100%; max-height: 80vh; display: flex; flex-direction: column;
     animation: fadeScaleIn 0.18s ease;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.08);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.40), inset 0 1.5px 0 rgba(255,255,255,0.14);
   }
   .standup-header {
     display: flex; align-items: center; justify-content: space-between;
