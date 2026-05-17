@@ -195,6 +195,9 @@ export function App() {
   // Tracks the last fetchBody key sent to avoid duplicate requests when
   // handleSelectItem and the stale-body useEffect both fire for the same item.
   const lastBodyFetchKey = React.useRef<string | null>(null);
+  // True while a live refresh is in-flight (between 'refreshing' and 'dataComplete').
+  // Suppresses per-page setData() calls so the board never clears mid-refresh.
+  const isRefreshingRef = useRef(false);
 
   // Keyboard navigation
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -205,46 +208,71 @@ export function App() {
       const msg = event.data as ExtensionMessage;
       switch (msg.type) {
         case 'loading':
+          isRefreshingRef.current = false;
           setIsLoadingMore(true);
           if (state !== 'data') setState('loading');
           break;
         case 'refreshing':
+          isRefreshingRef.current = true;
           setIsLoadingMore(true);
           break;
-        case 'dataComplete':
+        case 'dataComplete': {
+          isRefreshingRef.current = false;
           setIsLoadingMore(false);
           setIsRefreshing(false);
-          // Auto-select deferred here so the full sprint list (all pages) is known.
-          if (sprintNeedsAutoSelect.current && dataRef.current?.sprints.length) {
-            sprintNeedsAutoSelect.current = false;
-            const { sprints } = dataRef.current;
+          // Apply the final assembled data (may have been buffered during refresh).
+          const final = dataRef.current;
+          if (final) {
+            setData(final);
+            setState('data');
+            setDetailItem((prev) => {
+              if (!prev) return prev;
+              for (const col of Object.values(final.groups)) {
+                const updated = col.find((i) => i.id === prev.id);
+                if (updated) {
+                  return updated.updatedAt !== prev.updatedAt
+                    ? { ...updated }
+                    : { ...updated, body: prev.body };
+                }
+              }
+              const linkedPR = (final.linkedIssuePRs ?? []).find((i) => i.id === prev.id);
+              if (linkedPR) return { ...linkedPR, body: prev.body };
+              return null;
+            });
+          }
+          // Auto-select or validate sprint against the complete dataset.
+          if (final?.sprints.length) {
+            const { sprints } = final;
             setSprintFilter((prev) => {
-              if (prev !== null) return sprints.includes(prev) ? prev : (sprints[0] ?? null);
-              return sprints[0] ?? null;
+              if (sprintNeedsAutoSelect.current) {
+                sprintNeedsAutoSelect.current = false;
+                return prev !== null && sprints.includes(prev) ? prev : (sprints[0] ?? null);
+              }
+              if (prev === null) return null;
+              return sprints.includes(prev) ? prev : (sprints[0] ?? null);
             });
           }
           break;
+        }
         case 'data': {
           dataRef.current = msg.payload;
+          // During a live refresh: buffer pages without updating the display.
+          // This prevents the board from briefly clearing to 1 page mid-refresh.
+          // dataComplete will apply the final complete data atomically.
+          if (isRefreshingRef.current) break;
           setData(msg.payload);
           setState('data');
-          // Only validate an existing selection against the incoming sprint list.
-          // Initial auto-select is deferred to dataComplete (full dataset).
           setSprintFilter((prev) => {
             const { sprints } = msg.payload;
-            if (prev === null) return null; // keep null until dataComplete auto-selects
+            if (prev === null) return null;
             if (sprints.length === 0) return null;
             return sprints.includes(prev) ? prev : sprints[0];
           });
-          // Keep the open detail panel in sync with refreshed board data.
-          // Scan groups with early exit instead of flattening to avoid
-          // unnecessary allocations on large boards.
           setDetailItem((prev) => {
             if (!prev) return prev;
             for (const col of Object.values(msg.payload.groups)) {
               const updated = col.find((i) => i.id === prev.id);
               if (updated) {
-                // updatedAt changed → drop stale body so the useEffect below re-fetches
                 return updated.updatedAt !== prev.updatedAt
                   ? { ...updated }
                   : { ...updated, body: prev.body };
@@ -252,7 +280,6 @@ export function App() {
             }
             const linkedPR = (msg.payload.linkedIssuePRs ?? []).find((i) => i.id === prev.id);
             if (linkedPR) return { ...linkedPR, body: prev.body };
-            // Item absent from the full payload — closed/merged/removed; close the panel
             return null;
           });
           break;
