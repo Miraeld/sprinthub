@@ -504,6 +504,15 @@
   .sk-avatar { height: 22px; border-radius: 50%; }
   .sk-avatar2 { height: 22px; border-radius: 50%; }
 
+  /* Skeleton appended during stale-while-revalidate refresh */
+  .skeleton-loading-more {
+    padding: 6px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .skeleton-loading-more .skeleton-group { opacity: 0.7; }
+
   .empty-group {
     padding: 16px 20px;
     color: #45475a;
@@ -524,27 +533,6 @@
     gap: 0;
   }
 
-  .footer-loading-more {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin-left: 8px;
-    color: #6c7086;
-    font-size: 10px;
-  }
-
-  .footer-loading-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #89b4fa;
-    animation: footerPulse 1.2s ease-in-out infinite;
-  }
-
-  @keyframes footerPulse {
-    0%, 100% { opacity: 0.3; transform: scale(0.85); }
-    50%       { opacity: 1;   transform: scale(1); }
-  }
 
   /* ─── Sprint select ───────────────────────── */
   .sprint-bar {
@@ -2250,20 +2238,22 @@
   .liquid-glass .detail-gh-btn { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: #c8d4f4; }
   .liquid-glass .detail-gh-btn:hover { border-color: #89b4fa; color: #89b4fa; background: rgba(137,180,250,0.10); }
 
-  /* Standup modal */
+  /* Standup modal — overlay is just a dim scrim, blur lives on the modal only */
   .liquid-glass .standup-overlay {
-    backdrop-filter: blur(6px) saturate(160%) brightness(0.86) !important;
-    -webkit-backdrop-filter: blur(6px) saturate(160%) brightness(0.86) !important;
-    background: rgba(0,0,0,0.18) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(0,0,0,0.28) !important;
   }
   .liquid-glass .standup-modal {
     position: relative !important;
     overflow: hidden !important;
-    backdrop-filter: blur(80px) saturate(270%) brightness(1.05) !important;
-    -webkit-backdrop-filter: blur(80px) saturate(270%) brightness(1.05) !important;
+    /* Heavy blur on the modal itself keeps frosting localised */
+    backdrop-filter: blur(80px) saturate(300%) brightness(1.10) !important;
+    -webkit-backdrop-filter: blur(80px) saturate(300%) brightness(1.10) !important;
     border: 1.5px solid transparent !important;
+    /* Low-alpha background — blur/saturate do the readability work, not opacity */
     background:
-      linear-gradient(160deg, rgba(16,16,36,0.74) 0%, rgba(10,10,28,0.70) 100%) padding-box,
+      linear-gradient(160deg, rgba(16,16,36,0.30) 0%, rgba(10,10,28,0.26) 100%) padding-box,
       linear-gradient(148deg,
         rgba(255,255,255,0.60) 0%,
         rgba(255,255,255,0.14) 35%,
@@ -2272,9 +2262,7 @@
     box-shadow:
       0 48px 120px rgba(0,0,0,0.72),
       0 0 0 0.5px rgba(255,255,255,0.05),
-      /* top-edge specular rim */
       inset 0 2px 0 rgba(255,255,255,0.30),
-      /* chromatic inner glows: blue top-left, violet bottom-right */
       inset 6px 6px 40px rgba(100,160,255,0.06),
       inset -6px -6px 40px rgba(203,166,247,0.05) !important;
   }
@@ -2526,16 +2514,23 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.50);
   }
 
+  .light-theme.liquid-glass .standup-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(0,0,0,0.14) !important;
+  }
   .light-theme.liquid-glass .standup-modal {
+    backdrop-filter: blur(80px) saturate(280%) brightness(1.06) !important;
+    -webkit-backdrop-filter: blur(80px) saturate(280%) brightness(1.06) !important;
     border: 1.5px solid transparent !important;
     background:
-      linear-gradient(160deg, rgba(245,248,255,0.90) 0%, rgba(238,244,255,0.87) 100%) padding-box,
+      linear-gradient(160deg, rgba(245,248,255,0.55) 0%, rgba(238,244,255,0.50) 100%) padding-box,
       linear-gradient(148deg,
         rgba(255,255,255,1.0) 0%,
         rgba(200,220,255,0.30) 40%,
         rgba(80,100,200,0.16) 100%) border-box !important;
     box-shadow:
-      0 40px 100px rgba(60,80,200,0.26),
+      0 40px 100px rgba(60,80,200,0.20),
       0 0 0 0.5px rgba(255,255,255,0.60),
       inset 0 2px 0 rgba(255,255,255,1.0),
       inset 0 0 60px rgba(120,160,255,0.04) !important;

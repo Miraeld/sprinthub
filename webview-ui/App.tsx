@@ -958,6 +958,26 @@ export function App() {
           </div>
         )}
 
+        {state === 'data' && data && isLoadingMore && (
+          <div className="skeleton-loading-more">
+            {[0, 1].map((gi) => (
+              <div key={gi} className="skeleton-group">
+                <div className="skeleton-col-header" />
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="skeleton-row" style={{ opacity: 1 - (gi * 3 + i) * 0.09 }}>
+                    <div className="skeleton-pulse sk-age"    style={{ animationDelay: `${(gi * 3 + i) * 0.09}s` }} />
+                    <div className="skeleton-pulse sk-dots"   style={{ animationDelay: `${(gi * 3 + i) * 0.09 + 0.10}s` }} />
+                    <div className="skeleton-pulse sk-title"  style={{ width: `${[68, 55, 78, 62, 72, 50][gi * 3 + i]}%`, animationDelay: `${(gi * 3 + i) * 0.09 + 0.20}s` }} />
+                    <div className="skeleton-pulse sk-diff"   style={{ animationDelay: `${(gi * 3 + i) * 0.09 + 0.30}s` }} />
+                    <div className="skeleton-pulse sk-avatar" style={{ animationDelay: `${(gi * 3 + i) * 0.09 + 0.40}s` }} />
+                    <div className="skeleton-pulse sk-avatar2" style={{ animationDelay: `${(gi * 3 + i) * 0.09 + 0.50}s` }} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
         {state === 'data' && data && (
           <>
             {tab === 'dashboard' ? (
@@ -1027,12 +1047,6 @@ export function App() {
       {data && (
         <div className="footer">
           {formatLastUpdated(data.lastUpdated)}
-          {isLoadingMore && (
-            <span className="footer-loading-more" title="Fetching latest data…">
-              <span className="footer-loading-dot" />
-              Updating…
-            </span>
-          )}
           {sprintFilter && <span style={{ marginLeft: 8, color: '#89b4fa' }}>· Sprint: {sprintFilter}</span>}
           {data.rateLimit && (() => {
             const { remaining, limit, resetAt } = data.rateLimit;
