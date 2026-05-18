@@ -515,7 +515,7 @@
 
   .empty-group {
     padding: 16px 20px;
-    color: #45475a;
+    color: #585b70;
     font-size: 12px;
     font-style: italic;
   }
@@ -2851,6 +2851,7 @@
   .light-theme .loading-text { color: #6c6f85; }
   .light-theme .error-box { background: #f38ba822; border-color: #d20f3944; color: #d20f39; }
   .light-theme .lp-empty { color: #8c8fa1; }
+  .light-theme .empty-group { color: #8c8fa1; }
   .light-theme .lp-draft-badge { background: rgba(140,143,161,0.2); color: #6c6f85; }
   .light-theme .milestone-tag { background: #ccd0da; color: #4c4f69; }
 

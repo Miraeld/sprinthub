@@ -154,6 +154,7 @@ export function App() {
   const [config, setConfig] = useState<RunwayConfig | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 150);
   const [tab, setTab] = useState<FilterTab>('dashboard');
@@ -220,6 +221,7 @@ export function App() {
           isRefreshingRef.current = false;
           setIsLoadingMore(false);
           setIsRefreshing(false);
+          setIsProcessing(true);
           // Apply the final assembled data (may have been buffered during refresh).
           const final = dataRef.current;
           if (final) {
@@ -316,6 +318,7 @@ export function App() {
         // Phase 2: conflict threats
         case 'conflictThreats':
           setConflictThreats(msg.threats);
+          setIsProcessing(false);
           break;
         // Phase 3: standup
         case 'standup':
@@ -1095,6 +1098,7 @@ export function App() {
         <div className="footer">
           {formatLastUpdated(data.lastUpdated)}
           {isLoadingMore && <span className="footer-updating">· updating</span>}
+          {!isLoadingMore && isProcessing && <span className="footer-updating">· processing</span>}
           {sprintFilter && <span style={{ marginLeft: 8, color: '#89b4fa' }}>· Sprint: {sprintFilter}</span>}
           {data.rateLimit && (() => {
             const { remaining, limit, resetAt } = data.rateLimit;
