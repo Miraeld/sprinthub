@@ -69,21 +69,7 @@
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "sprinthub.sidebar",
-        "contents": "Your GitHub sprint board & PR hub, right inside VS Code.\n[$(project) Open SprintHub](command:sprinthub.open)\n\nFirst time? Click the ⚙️ icon after opening to configure your project."
-      }
-    ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "sprinthub.open",
-          "when": "view == sprinthub.sidebar",
-          "group": "navigation"
-        }
-      ]
-    },
+    "menus": {},
     "configuration": {
       "title": "SprintHub",
       "properties": {

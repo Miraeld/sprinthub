@@ -1810,57 +1810,61 @@
 
   /* ── Standup rich view ───────────────────────── */
   .su-date {
-    font-size: 11px; color: #6c7086; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.5px;
-    margin-bottom: 14px;
+    font-size: 10.5px; color: #9399b2; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 14px; padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
   }
-  .su-section { margin-bottom: 16px; }
+  .su-section { margin-bottom: 20px; }
   .su-section-header {
     display: flex; align-items: center; gap: 7px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
-  .su-section-icon { font-size: 13px; line-height: 1; flex-shrink: 0; }
+  .su-section-icon { font-size: 14px; line-height: 1; flex-shrink: 0; }
   .su-section-title {
     font-size: 13px; font-weight: 700; color: #cdd6f4; flex: 1;
   }
   .su-section-count {
-    font-size: 11px; color: #6c7086; background: #1e1e2d;
-    border-radius: 8px; padding: 1px 7px; font-weight: 600;
+    font-size: 11px; color: #89b4fa;
+    background: rgba(137,180,250,0.12);
+    border: 1px solid rgba(137,180,250,0.20);
+    border-radius: 9px; padding: 2px 8px; font-weight: 700;
   }
-  .su-repo-group { margin-left: 4px; margin-bottom: 4px; }
+  .su-repo-group { margin-left: 4px; margin-bottom: 6px; }
   .su-repo-header {
     display: flex; align-items: center; gap: 6px;
-    background: none; border: none; color: #a6adc8;
-    cursor: pointer; padding: 3px 4px; border-radius: 5px;
+    background: none; border: none; color: #bac2de;
+    cursor: pointer; padding: 4px 6px; border-radius: 6px;
     font-size: 12px; font-weight: 600; width: 100%; text-align: left;
     transition: background 0.1s;
   }
-  .su-repo-header:hover { background: #1e1e2d; color: #cdd6f4; }
+  .su-repo-header:hover { background: rgba(255,255,255,0.05); color: #cdd6f4; }
   .su-repo-chevron {
-    transition: transform 0.15s; flex-shrink: 0; color: #585b70;
+    transition: transform 0.15s; flex-shrink: 0; color: #6c7086;
     transform: rotate(0deg);
   }
   .su-repo-chevron.open { transform: rotate(90deg); }
   .su-repo-name { flex: 1; }
   .su-repo-count {
-    font-size: 10px; color: #6c7086; background: #181826;
-    border-radius: 6px; padding: 1px 6px;
+    font-size: 10px; color: #9399b2;
+    background: rgba(147,153,178,0.14);
+    border-radius: 6px; padding: 2px 7px; font-weight: 600;
   }
   .su-repo-items {
-    display: flex; flex-direction: column; gap: 1px;
-    margin-left: 20px; padding-left: 8px;
-    border-left: 1px solid #2a2a3d; margin-bottom: 4px;
+    display: flex; flex-direction: column; gap: 2px;
+    margin-left: 22px; padding-left: 10px;
+    border-left: 1.5px solid rgba(137,180,250,0.18); margin-bottom: 4px;
   }
   .su-item {
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; gap: 7px;
     background: none; border: none; color: #cdd6f4;
-    cursor: pointer; padding: 3px 6px; border-radius: 5px;
+    cursor: pointer; padding: 5px 8px; border-radius: 6px;
     font-size: 12px; text-align: left; width: 100%;
     transition: background 0.1s;
   }
-  .su-item:hover { background: #1e1e2d; }
-  .su-item-num { color: #585b70; font-size: 11px; flex-shrink: 0; }
-  .su-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .su-item:hover { background: rgba(255,255,255,0.05); }
+  .su-item-num { color: #89b4fa; font-size: 11px; flex-shrink: 0; font-weight: 600; }
+  .su-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 
   /* ── Phase 3: Metadata Editor ────────────────── */
   .metadata-editor { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
@@ -2562,11 +2566,12 @@
   .light-theme.liquid-glass .standup-p { color: #4858a0 !important; }
 
   /* su-* rich standup view — light theme */
-  .light-theme.liquid-glass .su-date { color: #2a3878 !important; }
+  .light-theme.liquid-glass .su-date { color: #2a3878 !important; border-bottom-color: rgba(60,80,200,0.12) !important; }
   .light-theme.liquid-glass .su-section-title { color: #1a2050 !important; }
   .light-theme.liquid-glass .su-section-count {
-    background: rgba(60,80,200,0.10) !important;
-    color: #4858a0 !important;
+    background: rgba(30,61,176,0.10) !important;
+    border-color: rgba(30,61,176,0.18) !important;
+    color: #1e3db0 !important;
   }
   .light-theme.liquid-glass .su-repo-header { color: #2a3878 !important; }
   .light-theme.liquid-glass .su-repo-header:hover {
@@ -2574,13 +2579,13 @@
     color: #1a2050 !important;
   }
   .light-theme.liquid-glass .su-repo-count {
-    background: rgba(60,80,200,0.08) !important;
-    color: #6070a8 !important;
+    background: rgba(60,80,200,0.10) !important;
+    color: #4858a0 !important;
   }
-  .light-theme.liquid-glass .su-repo-items { border-left-color: rgba(60,80,200,0.20) !important; }
+  .light-theme.liquid-glass .su-repo-items { border-left-color: rgba(30,61,176,0.25) !important; }
   .light-theme.liquid-glass .su-item { color: #2a3060 !important; }
   .light-theme.liquid-glass .su-item:hover { background: rgba(60,80,200,0.07) !important; }
-  .light-theme.liquid-glass .su-item-num { color: #8c8fa1 !important; }
+  .light-theme.liquid-glass .su-item-num { color: #1e3db0 !important; }
   .light-theme.liquid-glass .standup-view-btn { color: #6070a8 !important; }
   .light-theme.liquid-glass .standup-view-btn:not(:last-child) { border-right-color: rgba(60,80,200,0.20) !important; }
   .light-theme.liquid-glass .standup-view-btn.active { background: rgba(30,60,245,0.10) !important; color: #1e3db0 !important; }

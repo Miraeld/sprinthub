@@ -21,6 +21,31 @@ import { BoardItem, ConflictThreat, ExtensionMessage, LinkedPR, RunwayConfig, Ru
 
 const exec = util.promisify(cp.exec);
 
+export function cacheKeyFor(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
+  return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
+}
+
+export function applyStatusBarData(item: vscode.StatusBarItem, data: RunwayData): void {
+  const allItems: BoardItem[] = [...Object.values(data.groups).flat(), ...(data.linkedIssuePRs ?? [])];
+  const openPRs = allItems.filter((i) => i.type === 'PULL_REQUEST' && i.state === 'OPEN');
+  const ciFailures = openPRs.filter((i) => i.ciState === 'FAILURE' || i.ciState === 'ERROR');
+  const changesRequested = openPRs.filter((i) =>
+    i.reviews?.some((r) => r.state === 'CHANGES_REQUESTED')
+  );
+  const total = ciFailures.length + changesRequested.length;
+  if (total === 0) {
+    item.text = '$(check) SprintHub';
+    item.backgroundColor = undefined;
+  } else {
+    const parts: string[] = [];
+    if (ciFailures.length) parts.push(`${ciFailures.length} CI fail${ciFailures.length > 1 ? 's' : ''}`);
+    if (changesRequested.length) parts.push(`${changesRequested.length} changes req`);
+    item.text = `$(warning) ${parts.join(' · ')}`;
+    item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+  }
+  item.show();
+}
+
 function getNonce() {
   let text = '';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -45,10 +70,10 @@ export class SprintHubPanel {
   private _linkedByIssue = new Map<number, BoardItem[]>();
 
   private static _cacheKey(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
-    return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
+    return cacheKeyFor(owner, projectNumber, ownerType, statusFieldName);
   }
 
-  public static createOrShow(extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
+  public static createOrShow(extensionUri: vscode.Uri, context: vscode.ExtensionContext, statusBarItem: vscode.StatusBarItem) {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
@@ -69,19 +94,16 @@ export class SprintHubPanel {
       }
     );
 
-    SprintHubPanel.currentPanel = new SprintHubPanel(panel, extensionUri, context);
+    SprintHubPanel.currentPanel = new SprintHubPanel(panel, extensionUri, context, statusBarItem);
   }
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, context: vscode.ExtensionContext, statusBarItem: vscode.StatusBarItem) {
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._context = context;
 
-    // Phase 2: Status bar blocker watchdog
-    this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    this._statusBarItem.command = 'sprinthub.showBlockers';
-    this._statusBarItem.tooltip = 'SprintHub — CI & review status';
-    this._disposables.push(this._statusBarItem);
+    // Phase 2: Status bar blocker watchdog — item is owned by extension.ts, not disposed here
+    this._statusBarItem = statusBarItem;
 
     this._panel.webview.html = this._buildHtml(this._panel.webview);
 
@@ -503,30 +525,16 @@ export class SprintHubPanel {
   // ─── Phase 2: Status Bar Blocker Watchdog ──────────────────────────────────
 
   private _updateStatusBar(data: RunwayData) {
+    // Delegate display logic to the shared helper (also used by background service)
+    applyStatusBarData(this._statusBarItem, data);
+
+    // Store blocker lists for the quick-pick
     const allItems: BoardItem[] = [...Object.values(data.groups).flat(), ...(data.linkedIssuePRs ?? [])];
     const openPRs = allItems.filter((i) => i.type === 'PULL_REQUEST' && i.state === 'OPEN');
-
     const ciFailures = openPRs.filter((i) => i.ciState === 'FAILURE' || i.ciState === 'ERROR');
     const changesRequested = openPRs.filter((i) =>
       i.reviews?.some((r) => r.state === 'CHANGES_REQUESTED')
     );
-
-    const total = ciFailures.length + changesRequested.length;
-
-    if (total === 0) {
-      this._statusBarItem.text = '$(check) SprintHub';
-      this._statusBarItem.backgroundColor = undefined;
-    } else {
-      const parts: string[] = [];
-      if (ciFailures.length) parts.push(`${ciFailures.length} CI fail${ciFailures.length > 1 ? 's' : ''}`);
-      if (changesRequested.length) parts.push(`${changesRequested.length} changes req`);
-      this._statusBarItem.text = `$(warning) ${parts.join(' · ')}`;
-      this._statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-    }
-
-    this._statusBarItem.show();
-
-    // Store for use in showBlockers quick-pick
     (this as unknown as Record<string, unknown>)._blockerPRs = { ciFailures, changesRequested };
   }
 
@@ -702,7 +710,6 @@ export class SprintHubPanel {
     if (this._refreshTimer) {
       clearInterval(this._refreshTimer);
     }
-    this._statusBarItem.hide();
     this._panel.dispose();
     while (this._disposables.length) {
       const d = this._disposables.pop();
