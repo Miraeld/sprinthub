@@ -17,7 +17,7 @@ import {
   fetchSettingsOwners,
   fetchSettingsProjects,
 } from './githubService';
-import { BoardItem, ConflictThreat, ExtensionMessage, RunwayConfig, RunwayData, WebviewMessage } from './types';
+import { BoardItem, ConflictThreat, ExtensionMessage, LinkedPR, RunwayConfig, RunwayData, WebviewMessage } from './types';
 
 const exec = util.promisify(cp.exec);
 
@@ -40,6 +40,9 @@ export class SprintHubPanel {
   private readonly _disposables: vscode.Disposable[] = [];
   private _refreshTimer: ReturnType<typeof setInterval> | undefined;
   private _statusBarItem: vscode.StatusBarItem;
+  // Reverse lookup built after background linked-PR fetch: issueNumber → linked PRs.
+  // Used as a fallback in _fetchLinkedPRs when fetchLinkedPRChecks returns empty.
+  private _linkedByIssue = new Map<number, BoardItem[]>();
 
   private static _cacheKey(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
     return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
@@ -204,12 +207,31 @@ export class SprintHubPanel {
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('timeout')), 15000)
     );
+    let prs: LinkedPR[] = [];
     try {
-      const prs = await Promise.race([fetchLinkedPRChecks(owner, repo, issueNumber), timeout]);
-      this._post({ type: 'linkedPRs', itemId, prs });
+      prs = await Promise.race([fetchLinkedPRChecks(owner, repo, issueNumber), timeout]);
     } catch {
-      this._post({ type: 'linkedPRs', itemId, prs: [] });
+      // fetchLinkedPRChecks failed or timed out — fall through to board-level fallback
     }
+
+    if (!prs.length) {
+      // Fallback: use board-level linked PRs already fetched in background
+      const boardPRs = this._linkedByIssue.get(issueNumber) ?? [];
+      if (boardPRs.length) {
+        prs = boardPRs.map((pr): LinkedPR => ({
+          number: pr.number,
+          title: pr.title,
+          url: pr.url,
+          state: pr.state,
+          isDraft: pr.isDraft ?? false,
+          headRefName: pr.headRefName ?? '',
+          ciState: pr.ciState ?? 'none',
+          checkRuns: [],
+        }));
+      }
+    }
+
+    this._post({ type: 'linkedPRs', itemId, prs });
   }
 
   private async _fetchBody(itemId: string, owner: string, repo: string, number: number, isIssue: boolean, updatedAt: string) {
@@ -266,23 +288,30 @@ export class SprintHubPanel {
     }
 
     try {
+      const isRefresh = !!cached;
       const data = await fetchProjectData(
         owner,
         projectNumber,
         ownerType === 'organization',
         statusFieldName,
-        (partial) => {
-          // Deliver each page to the webview as it arrives
+        isRefresh ? undefined : (partial) => {
           this._post({ type: 'data', payload: partial });
           this._updateStatusBar(partial);
         }
       );
+      if (isRefresh) {
+        // Post the complete fresh data atomically — no partial updates during refresh
+        this._post({ type: 'data', payload: data });
+        this._updateStatusBar(data);
+      }
       // Persist for next open — attach .catch() so a storage rejection doesn't go silent
       this._context.globalState.update(cacheKey, data).then(undefined, (err: unknown) => {
         console.error('SprintHub: cache write failed', err);
       });
-      // Fetch linked PRs first, then run conflict check with the enriched dataset.
-      // Running conflicts on data.linkedIssuePRs=[] would miss linked-PR conflicts.
+      // Signal that the main board data is ready — the webview can render now.
+      // Linked PRs and conflict checks run in the background and push updates
+      // incrementally via linkedIssuePRs / conflictThreats messages.
+      this._post({ type: 'dataComplete' });
       void (async () => {
         try {
           const linkedPRs = await this._fetchLinkedPRsBackground(data.groups);
@@ -290,8 +319,8 @@ export class SprintHubPanel {
           // Update status bar with the now-enriched PR list (linked PRs were [] before this point)
           this._updateStatusBar(enriched);
           await this._checkConflicts(enriched);
-        } finally {
-          this._post({ type: 'dataComplete' });
+        } catch {
+          // best-effort — linked PRs and conflict checks are non-blocking
         }
       })();
     } catch (err: unknown) {
@@ -388,10 +417,20 @@ export class SprintHubPanel {
   private async _fetchLinkedPRsBackground(groups: RunwayData['groups']): Promise<BoardItem[]> {
     try {
       const prs = await fetchLinkedPRsForBoard(groups);
+      // Build reverse lookup so _fetchLinkedPRs can find PRs by issue number
+      const linkedByIssue = new Map<number, BoardItem[]>();
+      for (const pr of prs) {
+        for (const num of pr.closingIssueNumbers ?? []) {
+          if (!linkedByIssue.has(num)) linkedByIssue.set(num, []);
+          linkedByIssue.get(num)!.push(pr);
+        }
+      }
+      this._linkedByIssue = linkedByIssue;
       this._post({ type: 'linkedIssuePRs', prs });
       return prs;
     } catch {
-      return []; // best-effort — Dashboard shows no linked PRs, conflict check still runs
+      this._post({ type: 'linkedIssuePRs', prs: [] });
+      return [];
     }
   }
 
