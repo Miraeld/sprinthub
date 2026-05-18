@@ -17,7 +17,7 @@ import {
   fetchSettingsOwners,
   fetchSettingsProjects,
 } from './githubService';
-import { BoardItem, ConflictThreat, ExtensionMessage, RunwayConfig, RunwayData, WebviewMessage } from './types';
+import { BoardItem, ConflictThreat, ExtensionMessage, LinkedPR, RunwayConfig, RunwayData, WebviewMessage } from './types';
 
 const exec = util.promisify(cp.exec);
 
@@ -40,6 +40,9 @@ export class SprintHubPanel {
   private readonly _disposables: vscode.Disposable[] = [];
   private _refreshTimer: ReturnType<typeof setInterval> | undefined;
   private _statusBarItem: vscode.StatusBarItem;
+  // Reverse lookup built after background linked-PR fetch: issueNumber → linked PRs.
+  // Used as a fallback in _fetchLinkedPRs when fetchLinkedPRChecks returns empty.
+  private _linkedByIssue = new Map<number, BoardItem[]>();
 
   private static _cacheKey(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
     return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
@@ -204,12 +207,31 @@ export class SprintHubPanel {
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('timeout')), 15000)
     );
+    let prs: LinkedPR[] = [];
     try {
-      const prs = await Promise.race([fetchLinkedPRChecks(owner, repo, issueNumber), timeout]);
-      this._post({ type: 'linkedPRs', itemId, prs });
+      prs = await Promise.race([fetchLinkedPRChecks(owner, repo, issueNumber), timeout]);
     } catch {
-      this._post({ type: 'linkedPRs', itemId, prs: [] });
+      // fetchLinkedPRChecks failed or timed out — fall through to board-level fallback
     }
+
+    if (!prs.length) {
+      // Fallback: use board-level linked PRs already fetched in background
+      const boardPRs = this._linkedByIssue.get(issueNumber) ?? [];
+      if (boardPRs.length) {
+        prs = boardPRs.map((pr): LinkedPR => ({
+          number: pr.number,
+          title: pr.title,
+          url: pr.url,
+          state: pr.state,
+          isDraft: pr.isDraft ?? false,
+          headRefName: pr.headRefName ?? '',
+          ciState: pr.ciState ?? 'none',
+          checkRuns: [],
+        }));
+      }
+    }
+
+    this._post({ type: 'linkedPRs', itemId, prs });
   }
 
   private async _fetchBody(itemId: string, owner: string, repo: string, number: number, isIssue: boolean, updatedAt: string) {
@@ -392,6 +414,15 @@ export class SprintHubPanel {
   private async _fetchLinkedPRsBackground(groups: RunwayData['groups']): Promise<BoardItem[]> {
     try {
       const prs = await fetchLinkedPRsForBoard(groups);
+      // Build reverse lookup so _fetchLinkedPRs can find PRs by issue number
+      const linkedByIssue = new Map<number, BoardItem[]>();
+      for (const pr of prs) {
+        for (const num of pr.closingIssueNumbers ?? []) {
+          if (!linkedByIssue.has(num)) linkedByIssue.set(num, []);
+          linkedByIssue.get(num)!.push(pr);
+        }
+      }
+      this._linkedByIssue = linkedByIssue;
       this._post({ type: 'linkedIssuePRs', prs });
       return prs;
     } catch {

@@ -404,71 +404,72 @@ async function fetchLinkedPRsFromRepos(
     }
   }
 
-  await Promise.all(
-    Array.from(issueByRepo.entries()).map(async ([repoKey, issueMap]) => {
-      const [repoOwner, repoName] = repoKey.split('/');
-      let prCursor: string | null = null;
+  // Process repos sequentially to avoid saturating GitHub's secondary rate limit,
+  // which would starve user-triggered requests (e.g. detail panel linked PRs fetch).
+  for (const [repoKey, issueMap] of issueByRepo.entries()) {
+    const [repoOwner, repoName] = repoKey.split('/');
+    let prCursor: string | null = null;
 
-      do {
-        let repoData: { repository: { pullRequests: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: RawRepoPR[] } } } | null = null;
-        try {
-          repoData = await graphql<{ repository: { pullRequests: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: RawRepoPR[] } } }>(
-            token,
-            REPO_OPEN_PRS_QUERY,
-            { owner: repoOwner, repo: repoName, cursor: prCursor }
-          );
-        } catch {
-          break; // skip repos we can't access
-        }
+    do {
+      let repoData: { repository: { pullRequests: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: RawRepoPR[] } } } | null = null;
+      try {
+        repoData = await graphql<{ repository: { pullRequests: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: RawRepoPR[] } } }>(
+          token,
+          REPO_OPEN_PRS_QUERY,
+          { owner: repoOwner, repo: repoName, cursor: prCursor }
+        );
+      } catch {
+        break; // skip repos we can't access
+      }
 
-        const prs = repoData?.repository?.pullRequests?.nodes ?? [];
-        for (const rawPR of prs) {
-          const prKey = `${repoOwner}/${repoName}#${rawPR.number}`;
-          if (boardPRKeys.has(prKey) || linkedPRMap.has(prKey)) continue;
+      const prs = repoData?.repository?.pullRequests?.nodes ?? [];
+      for (const rawPR of prs) {
+        const prKey = `${repoOwner}/${repoName}#${rawPR.number}`;
+        if (boardPRKeys.has(prKey) || linkedPRMap.has(prKey)) continue;
 
-          // Check if this PR closes any of our board issues
-          const closingNums = rawPR.closingIssuesReferences?.nodes?.map((n) => n.number) ?? [];
-          const parentIssue = closingNums.map((n) => issueMap.get(n)).find((i) => i !== undefined);
-          if (!parentIssue) continue;
+        // Check if this PR closes any of our board issues
+        const closingNums = rawPR.closingIssuesReferences?.nodes?.map((n) => n.number) ?? [];
+        const parentIssue = closingNums.map((n) => issueMap.get(n)).find((i) => i !== undefined);
+        if (!parentIssue) continue;
 
-          const ciRaw = rawPR.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state ?? 'none';
-          linkedPRMap.set(prKey, {
-            id: `linked-${prKey}`,
-            number: rawPR.number,
-            title: rawPR.title,
-            type: 'PULL_REQUEST',
-            url: rawPR.url,
-            column: parentIssue.column,
-            state: rawPR.state,
-            author: rawPR.author ?? { login: 'unknown', avatarUrl: '' },
-            assignees: rawPR.assignees?.nodes ?? [],
-            labels: parentIssue.labels,
-            repository: repoName,
-            repositoryOwner: repoOwner,
-            createdAt: rawPR.createdAt,
-            updatedAt: rawPR.updatedAt,
-            isDraft: rawPR.isDraft,
-            additions: rawPR.additions,
-            deletions: rawPR.deletions,
-            headRefName: rawPR.headRefName,
-            ciState: ciRaw as CIState,
-            reviews: extractLatestReviews(rawPR.reviews),
-            reviewRequests: (rawPR.reviewRequests?.nodes ?? [])
-              .map((r) => r.requestedReviewer)
-              .filter((r): r is GHUser => r !== null),
-            sprint: parentIssue.sprint,
-            sprintField: parentIssue.sprintField,
-          });
-        }
+        const ciRaw = rawPR.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state ?? 'none';
+        linkedPRMap.set(prKey, {
+          id: `linked-${prKey}`,
+          number: rawPR.number,
+          title: rawPR.title,
+          type: 'PULL_REQUEST',
+          url: rawPR.url,
+          column: parentIssue.column,
+          state: rawPR.state,
+          author: rawPR.author ?? { login: 'unknown', avatarUrl: '' },
+          assignees: rawPR.assignees?.nodes ?? [],
+          labels: parentIssue.labels,
+          repository: repoName,
+          repositoryOwner: repoOwner,
+          createdAt: rawPR.createdAt,
+          updatedAt: rawPR.updatedAt,
+          isDraft: rawPR.isDraft,
+          additions: rawPR.additions,
+          deletions: rawPR.deletions,
+          headRefName: rawPR.headRefName,
+          ciState: ciRaw as CIState,
+          reviews: extractLatestReviews(rawPR.reviews),
+          reviewRequests: (rawPR.reviewRequests?.nodes ?? [])
+            .map((r) => r.requestedReviewer)
+            .filter((r): r is GHUser => r !== null),
+          closingIssueNumbers: closingNums,
+          sprint: parentIssue.sprint,
+          sprintField: parentIssue.sprintField,
+        });
+      }
 
-        if (repoData?.repository?.pullRequests?.pageInfo?.hasNextPage) {
-          prCursor = repoData.repository.pullRequests.pageInfo.endCursor;
-        } else {
-          prCursor = null;
-        }
-      } while (prCursor !== null);
-    })
-  );
+      if (repoData?.repository?.pullRequests?.pageInfo?.hasNextPage) {
+        prCursor = repoData.repository.pullRequests.pageInfo.endCursor;
+      } else {
+        prCursor = null;
+      }
+    } while (prCursor !== null);
+  }
 
   return Array.from(linkedPRMap.values());
 }

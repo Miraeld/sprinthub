@@ -172,6 +172,9 @@ export function App() {
   // without stale closure issues.
   const dataRef = React.useRef<RunwayData | null>(null);
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
+  // Always-current ref so the linkedIssuePRs handler can read detailItem without a stale closure.
+  const detailItemRef = useRef<BoardItem | null>(null);
+  useEffect(() => { detailItemRef.current = detailItem; }, [detailItem]);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsOwners, setSettingsOwners] = useState<Array<{ login: string; ownerType: 'organization' | 'user' }> | null>(null);
@@ -315,6 +318,30 @@ export function App() {
         case 'linkedIssuePRs':
           setData((prev) => prev ? { ...prev, linkedIssuePRs: msg.prs } : null);
           setIsProcessing(false);
+          // If detail panel is open for an issue and has no linked PRs yet,
+          // synthesize them from the board-level data (handles the race where
+          // the user opened the panel before the background fetch completed).
+          {
+            const current = detailItemRef.current;
+            if (current?.type === 'ISSUE') {
+              const matching = msg.prs.filter((pr) => pr.closingIssueNumbers?.includes(current.number));
+              if (matching.length) {
+                setLinkedPRs((prev) => {
+                  if (prev !== null && prev.length > 0) return prev;
+                  return matching.map((pr): LinkedPR => ({
+                    number: pr.number,
+                    title: pr.title,
+                    url: pr.url,
+                    state: pr.state,
+                    isDraft: pr.isDraft ?? false,
+                    headRefName: pr.headRefName ?? '',
+                    ciState: pr.ciState ?? 'none',
+                    checkRuns: [],
+                  }));
+                });
+              }
+            }
+          }
           break;
         // Phase 2: conflict threats
         case 'conflictThreats':
