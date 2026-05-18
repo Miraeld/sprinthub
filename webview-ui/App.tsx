@@ -943,7 +943,10 @@ export function App() {
           <select
             className="sprint-select"
             value={sprintFilter ?? ''}
-            onChange={(e) => setSprintFilter(e.target.value || null)}
+            onChange={(e) => {
+              sprintNeedsAutoSelect.current = false;
+              setSprintFilter(e.target.value || null);
+            }}
           >
             <option value="">All sprints</option>
             {data.sprints.map((s) => (
@@ -953,7 +956,10 @@ export function App() {
           {sprintFilter && (
             <span className="sprint-active-badge">
               {sprintFilter}
-              <button className="sprint-clear-btn" onClick={() => setSprintFilter(null)} title="Clear sprint filter">✕</button>
+              <button className="sprint-clear-btn" onClick={() => {
+                sprintNeedsAutoSelect.current = false;
+                setSprintFilter(null);
+              }} title="Clear sprint filter">✕</button>
             </span>
           )}
         </div>
