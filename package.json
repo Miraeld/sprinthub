@@ -2,7 +2,7 @@
   "name": "sprinthub",
   "displayName": "SprintHub",
   "description": "GitHub Projects v2 dashboard inside VS Code — sprint board, PR status, CI checks, and team hub",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "publisher": "miraeld",
   "icon": "resources/sprinthub-icon.png",
   "repository": {
@@ -69,21 +69,7 @@
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "sprinthub.sidebar",
-        "contents": "Your GitHub sprint board & PR hub, right inside VS Code.\n[$(project) Open SprintHub](command:sprinthub.open)\n\nFirst time? Click the ⚙️ icon after opening to configure your project."
-      }
-    ],
-    "menus": {
-      "view/title": [
-        {
-          "command": "sprinthub.open",
-          "when": "view == sprinthub.sidebar",
-          "group": "navigation"
-        }
-      ]
-    },
+    "menus": {},
     "configuration": {
       "title": "SprintHub",
       "properties": {

@@ -154,6 +154,7 @@ export function App() {
   const [config, setConfig] = useState<RunwayConfig | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 150);
   const [tab, setTab] = useState<FilterTab>('dashboard');
@@ -161,13 +162,19 @@ export function App() {
     const saved = vscodeApi.getState() as { sprintFilter?: string | null } | undefined;
     return saved?.sprintFilter ?? null;
   });
-  // Auto-select the first sprint only on the very first data load (when the user
-  // has never interacted with the sprint picker). Once the user explicitly sets
-  // or clears the filter it should never be overridden by a background refresh.
+  // Auto-select the first sprint only once, deferred to dataComplete so the full
+  // sprint list (all pages) is known before committing. Once the user explicitly
+  // sets or clears the filter it must never be overridden by a background refresh.
   const sprintNeedsAutoSelect = React.useRef(
     (vscodeApi.getState() as { sprintFilter?: string | null } | undefined)?.sprintFilter === undefined
   );
+  // Always-current reference to data — used in dataComplete to access latest sprints
+  // without stale closure issues.
+  const dataRef = React.useRef<RunwayData | null>(null);
   const [detailItem, setDetailItem] = useState<BoardItem | null>(null);
+  // Always-current ref so the linkedIssuePRs handler can read detailItem without a stale closure.
+  const detailItemRef = useRef<BoardItem | null>(null);
+  useEffect(() => { detailItemRef.current = detailItem; }, [detailItem]);
   const [linkedPRs, setLinkedPRs] = useState<LinkedPR[] | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsOwners, setSettingsOwners] = useState<Array<{ login: string; ownerType: 'organization' | 'user' }> | null>(null);
@@ -176,6 +183,7 @@ export function App() {
   const [prFiles, setPrFiles] = useState<PRFile[] | null>(null);
   // Phase 2: conflict threats
   const [conflictThreats, setConflictThreats] = useState<ConflictThreat[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(true);
   // Phase 3: standup
   const [standupData, setStandupData] = useState<StandupData | null>(null);
   const [standupMarkdown, setStandupMarkdown] = useState<string | null>(null);
@@ -191,6 +199,9 @@ export function App() {
   // Tracks the last fetchBody key sent to avoid duplicate requests when
   // handleSelectItem and the stale-body useEffect both fire for the same item.
   const lastBodyFetchKey = React.useRef<string | null>(null);
+  // True while a live refresh is in-flight (between 'refreshing' and 'dataComplete').
+  // Suppresses per-page setData() calls so the board never clears mid-refresh.
+  const isRefreshingRef = useRef(false);
 
   // Keyboard navigation
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -201,38 +212,72 @@ export function App() {
       const msg = event.data as ExtensionMessage;
       switch (msg.type) {
         case 'loading':
-          setIsRefreshing(true);
+          isRefreshingRef.current = false;
+          setIsLoadingMore(true);
           if (state !== 'data') setState('loading');
           break;
+        case 'refreshing':
+          isRefreshingRef.current = true;
+          setIsLoadingMore(true);
+          break;
+        case 'dataComplete': {
+          isRefreshingRef.current = false;
+          setIsLoadingMore(false);
+          setIsRefreshing(false);
+          setIsProcessing(true);
+          // Apply the final assembled data (may have been buffered during refresh).
+          const final = dataRef.current;
+          if (final) {
+            setData(final);
+            setState('data');
+            setDetailItem((prev) => {
+              if (!prev) return prev;
+              for (const col of Object.values(final.groups)) {
+                const updated = col.find((i) => i.id === prev.id);
+                if (updated) {
+                  return updated.updatedAt !== prev.updatedAt
+                    ? { ...updated }
+                    : { ...updated, body: prev.body };
+                }
+              }
+              const linkedPR = (final.linkedIssuePRs ?? []).find((i) => i.id === prev.id);
+              if (linkedPR) return { ...linkedPR, body: prev.body };
+              return null;
+            });
+          }
+          // Auto-select or validate sprint against the complete dataset.
+          if (final?.sprints.length) {
+            const { sprints } = final;
+            setSprintFilter((prev) => {
+              if (sprintNeedsAutoSelect.current) {
+                sprintNeedsAutoSelect.current = false;
+                return prev !== null && sprints.includes(prev) ? prev : (sprints[0] ?? null);
+              }
+              if (prev === null) return null;
+              return sprints.includes(prev) ? prev : (sprints[0] ?? null);
+            });
+          }
+          break;
+        }
         case 'data': {
+          dataRef.current = msg.payload;
+          // During a live refresh: buffer pages without updating the display.
+          // This prevents the board from briefly clearing to 1 page mid-refresh.
+          // dataComplete will apply the final complete data atomically.
+          if (isRefreshingRef.current) break;
           setData(msg.payload);
           setState('data');
-          setIsRefreshing(false);
-          // Validate the restored sprint filter against the incoming sprint list.
-          // A stale value (different project or archived sprint) is reset to the
-          // latest sprint so the board never silently hides all cards.
-          // Auto-select only fires once (first-ever data load); after that we
-          // respect whatever the user set, including an explicit null ("show all").
-          const autoSelect = sprintNeedsAutoSelect.current;
-          if (autoSelect) sprintNeedsAutoSelect.current = false;
           setSprintFilter((prev) => {
-            if (msg.payload.sprints.length === 0) return null;
-            if (prev !== null) {
-              // Keep a valid selection; reset a stale one to the first sprint.
-              return msg.payload.sprints.includes(prev) ? prev : msg.payload.sprints[0];
-            }
-            // prev === null: first-ever load → auto-select; otherwise user chose "show all"
-            return autoSelect ? msg.payload.sprints[0] : null;
+            const { sprints } = msg.payload;
+            if (prev === null) return null;
+            if (sprints.length === 0) return null;
+            return sprints.includes(prev) ? prev : sprints[0];
           });
-          // Keep the open detail panel in sync with refreshed board data.
-          // Scan groups with early exit instead of flattening to avoid
-          // unnecessary allocations on large boards.
           setDetailItem((prev) => {
             if (!prev) return prev;
             for (const col of Object.values(msg.payload.groups)) {
               const updated = col.find((i) => i.id === prev.id);
               if (updated) {
-                // updatedAt changed → drop stale body so the useEffect below re-fetches
                 return updated.updatedAt !== prev.updatedAt
                   ? { ...updated }
                   : { ...updated, body: prev.body };
@@ -240,7 +285,6 @@ export function App() {
             }
             const linkedPR = (msg.payload.linkedIssuePRs ?? []).find((i) => i.id === prev.id);
             if (linkedPR) return { ...linkedPR, body: prev.body };
-            // Item absent from the full payload — closed/merged/removed; close the panel
             return null;
           });
           break;
@@ -270,6 +314,34 @@ export function App() {
         // Phase 1: PR files
         case 'prFiles':
           setPrFiles(msg.files);
+          break;
+        case 'linkedIssuePRs':
+          setData((prev) => prev ? { ...prev, linkedIssuePRs: msg.prs } : null);
+          setIsProcessing(false);
+          // If detail panel is open for an issue and has no linked PRs yet,
+          // synthesize them from the board-level data (handles the race where
+          // the user opened the panel before the background fetch completed).
+          {
+            const current = detailItemRef.current;
+            if (current?.type === 'ISSUE') {
+              const matching = msg.prs.filter((pr) => pr.closingIssueNumbers?.includes(current.number));
+              if (matching.length) {
+                setLinkedPRs((prev) => {
+                  if (prev !== null && prev.length > 0) return prev;
+                  return matching.map((pr): LinkedPR => ({
+                    number: pr.number,
+                    title: pr.title,
+                    url: pr.url,
+                    state: pr.state,
+                    isDraft: pr.isDraft ?? false,
+                    headRefName: pr.headRefName ?? '',
+                    ciState: pr.ciState ?? 'none',
+                    checkRuns: [],
+                  }));
+                });
+              }
+            }
+          }
           break;
         // Phase 2: conflict threats
         case 'conflictThreats':
@@ -871,7 +943,10 @@ export function App() {
           <select
             className="sprint-select"
             value={sprintFilter ?? ''}
-            onChange={(e) => setSprintFilter(e.target.value || null)}
+            onChange={(e) => {
+              sprintNeedsAutoSelect.current = false;
+              setSprintFilter(e.target.value || null);
+            }}
           >
             <option value="">All sprints</option>
             {data.sprints.map((s) => (
@@ -881,7 +956,10 @@ export function App() {
           {sprintFilter && (
             <span className="sprint-active-badge">
               {sprintFilter}
-              <button className="sprint-clear-btn" onClick={() => setSprintFilter(null)} title="Clear sprint filter">✕</button>
+              <button className="sprint-clear-btn" onClick={() => {
+                sprintNeedsAutoSelect.current = false;
+                setSprintFilter(null);
+              }} title="Clear sprint filter">✕</button>
             </span>
           )}
         </div>
@@ -904,9 +982,20 @@ export function App() {
       {/* Content */}
       <div className="content">
         {state === 'loading' && (
-          <div className="center-state">
-            <div className="spinner" />
-            <span className="state-title">Loading project…</span>
+          <div className="skeleton-board">
+            <div className="skeleton-group">
+              <div className="skeleton-col-header" />
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="skeleton-row" style={{ opacity: 1 - i * 0.12 }}>
+                  <div className="skeleton-pulse sk-age" style={{ animationDelay: `${i * 0.08}s` }} />
+                  <div className="skeleton-pulse sk-dots" style={{ animationDelay: `${i * 0.08 + 0.1}s` }} />
+                  <div className="skeleton-pulse sk-title" style={{ width: `${55 + (i * 17) % 35}%`, animationDelay: `${i * 0.08 + 0.2}s` }} />
+                  <div className="skeleton-pulse sk-diff" style={{ animationDelay: `${i * 0.08 + 0.3}s` }} />
+                  <div className="skeleton-pulse sk-avatar" style={{ animationDelay: `${i * 0.08 + 0.4}s` }} />
+                  <div className="skeleton-pulse sk-avatar2" style={{ animationDelay: `${i * 0.08 + 0.5}s` }} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -941,55 +1030,97 @@ export function App() {
                 onSelect={handleSelectItem}
                 onOpenUrl={handleOpenUrl}
               />
-            ) : tab === 'milestones' ? (
-              /* Milestones view */
-              Object.keys(milestoneGroups).length === 0 ? (
-                <div className="milestone-empty">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#45475a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 4l3 3-3 3"/><path d="M3 7h18"/>
-                    <path d="M6 20l-3-3 3-3"/><path d="M21 17H3"/>
-                  </svg>
-                  No milestones found
-                </div>
-              ) : (
-                Object.entries(milestoneGroups)
-                  .sort(([a], [b]) => {
-                    if (a === '(No Milestone)') return -1;
-                    if (b === '(No Milestone)') return 1;
-                    const parts = (s: string) => s.split('.').map((n) => parseInt(n, 10) || 0);
-                    const ap = parts(a), bp = parts(b);
-                    for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
-                      const diff = (bp[i] ?? 0) - (ap[i] ?? 0);
-                      if (diff !== 0) return diff;
-                    }
-                    return 0;
-                  })
-                  .map(([milestone, items]) => (
-                  <ColumnGroup
-                    key={milestone}
-                    column={milestone}
-                    items={items}
-                    config={{ color: '#cba6f7', emoji: '⬡' }}
-                    onSelect={handleSelectItem}
-                    onOpenUrl={handleOpenUrl}
-                  />
-                ))
-              )
             ) : (
-              /* Board view */
-              data.columns.map((col) => {
-                const items = filteredGroups[col] ?? [];
-                return (
-                  <ColumnGroup
-                    key={col}
-                    column={col}
-                    items={items}
-                    config={getColumnConfig(col)}
-                    onSelect={handleSelectItem}
-                    onOpenUrl={handleOpenUrl}
-                  />
-                );
-              })
+              /* Main Board / PRs / Issues / Milestones — uniform layout matching Dashboard */
+              <div className="lp-wrap">
+                <div className="lp-toolbar">
+                  <span className="lp-count">
+                    {tab === 'milestones'
+                      ? `${Object.keys(milestoneGroups).length} milestone${Object.keys(milestoneGroups).length !== 1 ? 's' : ''}`
+                      : tab === 'prs'
+                      ? `${counts.prs} pull request${counts.prs !== 1 ? 's' : ''}`
+                      : tab === 'issues'
+                      ? `${counts.issues} issue${counts.issues !== 1 ? 's' : ''}`
+                      : `${counts.all} item${counts.all !== 1 ? 's' : ''}`}
+                  </span>
+                </div>
+                <div className="lp-header-row">
+                  <span className="lp-col-age">Age</span>
+                  <span className="lp-col-status">Status</span>
+                  <span className="lp-col-title">Item</span>
+                  <span className="lp-col-diff">Diff</span>
+                  <span className="lp-col-author">Auth</span>
+                  <span className="lp-col-collabs">Collaborators</span>
+                  <span className="lp-col-branch">Repo / Branch</span>
+                </div>
+                {tab === 'milestones' ? (
+                  Object.keys(milestoneGroups).length === 0 ? (
+                    <div className="milestone-empty">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#45475a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 4l3 3-3 3"/><path d="M3 7h18"/>
+                        <path d="M6 20l-3-3 3-3"/><path d="M21 17H3"/>
+                      </svg>
+                      No milestones found
+                    </div>
+                  ) : (
+                    Object.entries(milestoneGroups)
+                      .sort(([a], [b]) => {
+                        if (a === '(No Milestone)') return -1;
+                        if (b === '(No Milestone)') return 1;
+                        const parts = (s: string) => s.split('.').map((n) => parseInt(n, 10) || 0);
+                        const ap = parts(a), bp = parts(b);
+                        for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+                          const diff = (bp[i] ?? 0) - (ap[i] ?? 0);
+                          if (diff !== 0) return diff;
+                        }
+                        return 0;
+                      })
+                      .map(([milestone, items]) => (
+                        <ColumnGroup
+                          key={milestone}
+                          column={milestone}
+                          items={items}
+                          config={{ color: '#cba6f7', emoji: '⬡' }}
+                          onSelect={handleSelectItem}
+                          onOpenUrl={handleOpenUrl}
+                        />
+                      ))
+                  )
+                ) : (
+                  data.columns.map((col) => {
+                    const items = filteredGroups[col] ?? [];
+                    return (
+                      <ColumnGroup
+                        key={col}
+                        column={col}
+                        items={items}
+                        config={getColumnConfig(col)}
+                        onSelect={handleSelectItem}
+                        onOpenUrl={handleOpenUrl}
+                      />
+                    );
+                  })
+                )}
+              </div>
+            )}
+            {isLoadingMore && (
+              <div className="skeleton-loading-more">
+                {[0, 1].map((gi) => (
+                  <div key={gi} className="skeleton-group">
+                    <div className="skeleton-col-header" />
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="skeleton-row" style={{ opacity: 1 - (gi * 3 + i) * 0.09 }}>
+                        <div className="skeleton-pulse sk-age"     style={{ animationDelay: `${(gi * 3 + i) * 0.09}s` }} />
+                        <div className="skeleton-pulse sk-dots"    style={{ animationDelay: `${(gi * 3 + i) * 0.09 + 0.10}s` }} />
+                        <div className="skeleton-pulse sk-title"   style={{ width: `${[68, 55, 78, 62, 72, 50][gi * 3 + i]}%`, animationDelay: `${(gi * 3 + i) * 0.09 + 0.20}s` }} />
+                        <div className="skeleton-pulse sk-diff"    style={{ animationDelay: `${(gi * 3 + i) * 0.09 + 0.30}s` }} />
+                        <div className="skeleton-pulse sk-avatar"  style={{ animationDelay: `${(gi * 3 + i) * 0.09 + 0.40}s` }} />
+                        <div className="skeleton-pulse sk-avatar2" style={{ animationDelay: `${(gi * 3 + i) * 0.09 + 0.50}s` }} />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
             )}
           </>
         )}
@@ -999,6 +1130,8 @@ export function App() {
       {data && (
         <div className="footer">
           {formatLastUpdated(data.lastUpdated)}
+          {isLoadingMore && <span className="footer-updating">· updating</span>}
+          {!isLoadingMore && isProcessing && <span className="footer-updating">· processing</span>}
           {sprintFilter && <span style={{ marginLeft: 8, color: '#89b4fa' }}>· Sprint: {sprintFilter}</span>}
           {data.rateLimit && (() => {
             const { remaining, limit, resetAt } = data.rateLimit;

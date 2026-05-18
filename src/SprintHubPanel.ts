@@ -3,6 +3,7 @@ import * as cp from 'child_process';
 import * as util from 'util';
 import {
   fetchProjectData,
+  fetchLinkedPRsForBoard,
   fetchLinkedPRChecks,
   fetchItemBody,
   fetchPRFiles,
@@ -16,9 +17,34 @@ import {
   fetchSettingsOwners,
   fetchSettingsProjects,
 } from './githubService';
-import { BoardItem, ConflictThreat, ExtensionMessage, RunwayConfig, RunwayData, WebviewMessage } from './types';
+import { BoardItem, ConflictThreat, ExtensionMessage, LinkedPR, RunwayConfig, RunwayData, WebviewMessage } from './types';
 
 const exec = util.promisify(cp.exec);
+
+export function cacheKeyFor(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
+  return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
+}
+
+export function applyStatusBarData(item: vscode.StatusBarItem, data: RunwayData): void {
+  const allItems: BoardItem[] = [...Object.values(data.groups).flat(), ...(data.linkedIssuePRs ?? [])];
+  const openPRs = allItems.filter((i) => i.type === 'PULL_REQUEST' && i.state === 'OPEN');
+  const ciFailures = openPRs.filter((i) => i.ciState === 'FAILURE' || i.ciState === 'ERROR');
+  const changesRequested = openPRs.filter((i) =>
+    i.reviews?.some((r) => r.state === 'CHANGES_REQUESTED')
+  );
+  const total = ciFailures.length + changesRequested.length;
+  if (total === 0) {
+    item.text = '$(check) SprintHub';
+    item.backgroundColor = undefined;
+  } else {
+    const parts: string[] = [];
+    if (ciFailures.length) parts.push(`${ciFailures.length} CI fail${ciFailures.length > 1 ? 's' : ''}`);
+    if (changesRequested.length) parts.push(`${changesRequested.length} changes req`);
+    item.text = `$(warning) ${parts.join(' · ')}`;
+    item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+  }
+  item.show();
+}
 
 function getNonce() {
   let text = '';
@@ -35,12 +61,19 @@ export class SprintHubPanel {
 
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
+  private readonly _context: vscode.ExtensionContext;
   private readonly _disposables: vscode.Disposable[] = [];
   private _refreshTimer: ReturnType<typeof setInterval> | undefined;
   private _statusBarItem: vscode.StatusBarItem;
-  private _lastData: RunwayData | undefined;
+  // Reverse lookup built after background linked-PR fetch: issueNumber → linked PRs.
+  // Used as a fallback in _fetchLinkedPRs when fetchLinkedPRChecks returns empty.
+  private _linkedByIssue = new Map<number, BoardItem[]>();
 
-  public static createOrShow(extensionUri: vscode.Uri) {
+  private static _cacheKey(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
+    return cacheKeyFor(owner, projectNumber, ownerType, statusFieldName);
+  }
+
+  public static createOrShow(extensionUri: vscode.Uri, context: vscode.ExtensionContext, statusBarItem: vscode.StatusBarItem) {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
       : undefined;
@@ -61,18 +94,16 @@ export class SprintHubPanel {
       }
     );
 
-    SprintHubPanel.currentPanel = new SprintHubPanel(panel, extensionUri);
+    SprintHubPanel.currentPanel = new SprintHubPanel(panel, extensionUri, context, statusBarItem);
   }
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, context: vscode.ExtensionContext, statusBarItem: vscode.StatusBarItem) {
     this._panel = panel;
     this._extensionUri = extensionUri;
+    this._context = context;
 
-    // Phase 2: Status bar blocker watchdog
-    this._statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    this._statusBarItem.command = 'sprinthub.showBlockers';
-    this._statusBarItem.tooltip = 'SprintHub — CI & review status';
-    this._disposables.push(this._statusBarItem);
+    // Phase 2: Status bar blocker watchdog — item is owned by extension.ts, not disposed here
+    this._statusBarItem = statusBarItem;
 
     this._panel.webview.html = this._buildHtml(this._panel.webview);
 
@@ -198,12 +229,31 @@ export class SprintHubPanel {
     const timeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('timeout')), 15000)
     );
+    let prs: LinkedPR[] = [];
     try {
-      const prs = await Promise.race([fetchLinkedPRChecks(owner, repo, issueNumber), timeout]);
-      this._post({ type: 'linkedPRs', itemId, prs });
+      prs = await Promise.race([fetchLinkedPRChecks(owner, repo, issueNumber), timeout]);
     } catch {
-      this._post({ type: 'linkedPRs', itemId, prs: [] });
+      // fetchLinkedPRChecks failed or timed out — fall through to board-level fallback
     }
+
+    if (!prs.length) {
+      // Fallback: use board-level linked PRs already fetched in background
+      const boardPRs = this._linkedByIssue.get(issueNumber) ?? [];
+      if (boardPRs.length) {
+        prs = boardPRs.map((pr): LinkedPR => ({
+          number: pr.number,
+          title: pr.title,
+          url: pr.url,
+          state: pr.state,
+          isDraft: pr.isDraft ?? false,
+          headRefName: pr.headRefName ?? '',
+          ciState: pr.ciState ?? 'none',
+          checkRuns: [],
+        }));
+      }
+    }
+
+    this._post({ type: 'linkedPRs', itemId, prs });
   }
 
   private async _fetchBody(itemId: string, owner: string, repo: string, number: number, isIssue: boolean, updatedAt: string) {
@@ -232,8 +282,6 @@ export class SprintHubPanel {
   }
 
   private async _loadData() {
-    this._post({ type: 'loading' });
-
     const config = vscode.workspace.getConfiguration('sprinthub');
     const owner = config.get<string>('owner', '').trim();
     const projectNumber = config.get<number>('projectNumber', 0);
@@ -249,21 +297,58 @@ export class SprintHubPanel {
       return;
     }
 
+    // Show cached data immediately so the board is visible while fresh data loads.
+    // Cache is scoped to the current config so switching projects never shows stale data.
+    const cacheKey = SprintHubPanel._cacheKey(owner, projectNumber, ownerType, statusFieldName);
+    const cached = this._context.globalState.get<RunwayData>(cacheKey);
+    if (cached) {
+      this._post({ type: 'data', payload: cached });
+      this._updateStatusBar(cached); // fix: status bar available immediately from cache
+      this._post({ type: 'refreshing' });
+    } else {
+      this._post({ type: 'loading' });
+    }
+
     try {
+      const isRefresh = !!cached;
       const data = await fetchProjectData(
         owner,
         projectNumber,
         ownerType === 'organization',
-        statusFieldName
+        statusFieldName,
+        isRefresh ? undefined : (partial) => {
+          this._post({ type: 'data', payload: partial });
+          this._updateStatusBar(partial);
+        }
       );
-      this._lastData = data;
-      this._post({ type: 'data', payload: data });
-      this._updateStatusBar(data);
-      // Phase 2: run conflict check in background after data loads
-      void this._checkConflicts(data);
+      if (isRefresh) {
+        // Post the complete fresh data atomically — no partial updates during refresh
+        this._post({ type: 'data', payload: data });
+        this._updateStatusBar(data);
+      }
+      // Persist for next open — attach .catch() so a storage rejection doesn't go silent
+      this._context.globalState.update(cacheKey, data).then(undefined, (err: unknown) => {
+        console.error('SprintHub: cache write failed', err);
+      });
+      // Signal that the main board data is ready — the webview can render now.
+      // Linked PRs and conflict checks run in the background and push updates
+      // incrementally via linkedIssuePRs / conflictThreats messages.
+      this._post({ type: 'dataComplete' });
+      void (async () => {
+        try {
+          const linkedPRs = await this._fetchLinkedPRsBackground(data.groups);
+          const enriched = { ...data, linkedIssuePRs: linkedPRs };
+          // Update status bar with the now-enriched PR list (linked PRs were [] before this point)
+          this._updateStatusBar(enriched);
+          await this._checkConflicts(enriched);
+        } catch {
+          // best-effort — linked PRs and conflict checks are non-blocking
+        }
+      })();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this._post({ type: 'error', message: msg });
+      this._post({ type: 'dataComplete' });
     }
   }
 
@@ -349,6 +434,28 @@ export class SprintHubPanel {
     await vscode.window.showTextDocument(doc, { selection });
   }
 
+  // ─── Linked PRs background fetch ───────────────────────────────────────────
+
+  private async _fetchLinkedPRsBackground(groups: RunwayData['groups']): Promise<BoardItem[]> {
+    try {
+      const prs = await fetchLinkedPRsForBoard(groups);
+      // Build reverse lookup so _fetchLinkedPRs can find PRs by issue number
+      const linkedByIssue = new Map<number, BoardItem[]>();
+      for (const pr of prs) {
+        for (const num of pr.closingIssueNumbers ?? []) {
+          if (!linkedByIssue.has(num)) linkedByIssue.set(num, []);
+          linkedByIssue.get(num)!.push(pr);
+        }
+      }
+      this._linkedByIssue = linkedByIssue;
+      this._post({ type: 'linkedIssuePRs', prs });
+      return prs;
+    } catch {
+      this._post({ type: 'linkedIssuePRs', prs: [] });
+      return [];
+    }
+  }
+
   // ─── Phase 2: Hotspot Conflict Monitor ─────────────────────────────────────
 
   private async _checkConflicts(data: RunwayData) {
@@ -418,30 +525,16 @@ export class SprintHubPanel {
   // ─── Phase 2: Status Bar Blocker Watchdog ──────────────────────────────────
 
   private _updateStatusBar(data: RunwayData) {
+    // Delegate display logic to the shared helper (also used by background service)
+    applyStatusBarData(this._statusBarItem, data);
+
+    // Store blocker lists for the quick-pick
     const allItems: BoardItem[] = [...Object.values(data.groups).flat(), ...(data.linkedIssuePRs ?? [])];
     const openPRs = allItems.filter((i) => i.type === 'PULL_REQUEST' && i.state === 'OPEN');
-
     const ciFailures = openPRs.filter((i) => i.ciState === 'FAILURE' || i.ciState === 'ERROR');
     const changesRequested = openPRs.filter((i) =>
       i.reviews?.some((r) => r.state === 'CHANGES_REQUESTED')
     );
-
-    const total = ciFailures.length + changesRequested.length;
-
-    if (total === 0) {
-      this._statusBarItem.text = '$(check) SprintHub';
-      this._statusBarItem.backgroundColor = undefined;
-    } else {
-      const parts: string[] = [];
-      if (ciFailures.length) parts.push(`${ciFailures.length} CI fail${ciFailures.length > 1 ? 's' : ''}`);
-      if (changesRequested.length) parts.push(`${changesRequested.length} changes req`);
-      this._statusBarItem.text = `$(warning) ${parts.join(' · ')}`;
-      this._statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-    }
-
-    this._statusBarItem.show();
-
-    // Store for use in showBlockers quick-pick
     (this as unknown as Record<string, unknown>)._blockerPRs = { ciFailures, changesRequested };
   }
 
@@ -617,7 +710,6 @@ export class SprintHubPanel {
     if (this._refreshTimer) {
       clearInterval(this._refreshTimer);
     }
-    this._statusBarItem.hide();
     this._panel.dispose();
     while (this._disposables.length) {
       const d = this._disposables.pop();
