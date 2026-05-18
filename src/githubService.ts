@@ -525,6 +525,7 @@ export async function fetchProjectData(
   // Incremental state — only new nodes per page are parsed and appended
   const groups: Record<string, BoardItem[]> = {};
   const sprintsSet = new Set<string>();
+  const pageDeliveryInterval = 3;
   let pageCount = 0;
 
   do {
@@ -558,9 +559,9 @@ export async function fetchProjectData(
       : null;
 
     pageCount++;
-    // Deliver page 1 immediately for fast first paint; throttle to every 3rd page
+    // Deliver page 1 immediately for fast first paint; throttle to every nth page
     // after that to avoid re-serializing the full growing payload on every page.
-    if (onPage && (pageCount === 1 || pageCount % 3 === 0 || cursor === null)) {
+    if (onPage && (pageCount === 1 || pageCount % pageDeliveryInterval === 0 || cursor === null)) {
       onPage(assembleRunwayData(groups, sprintsSet, projectTitle, viewerLogin, lastRateLimit));
     }
   } while (cursor !== null);
