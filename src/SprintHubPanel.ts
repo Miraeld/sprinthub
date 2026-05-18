@@ -21,6 +21,10 @@ import { BoardItem, ConflictThreat, ExtensionMessage, LinkedPR, RunwayConfig, Ru
 
 const exec = util.promisify(cp.exec);
 
+export function cacheKeyFor(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
+  return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
+}
+
 function getNonce() {
   let text = '';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -45,7 +49,7 @@ export class SprintHubPanel {
   private _linkedByIssue = new Map<number, BoardItem[]>();
 
   private static _cacheKey(owner: string, projectNumber: number, ownerType: string, statusFieldName: string): string {
-    return `sprinthub.cache.${owner}.${projectNumber}.${ownerType}.${statusFieldName}`;
+    return cacheKeyFor(owner, projectNumber, ownerType, statusFieldName);
   }
 
   public static createOrShow(extensionUri: vscode.Uri, context: vscode.ExtensionContext) {
