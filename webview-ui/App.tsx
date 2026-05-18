@@ -314,11 +314,11 @@ export function App() {
           break;
         case 'linkedIssuePRs':
           setData((prev) => prev ? { ...prev, linkedIssuePRs: msg.prs } : null);
+          setIsProcessing(false);
           break;
         // Phase 2: conflict threats
         case 'conflictThreats':
           setConflictThreats(msg.threats);
-          setIsProcessing(false);
           break;
         // Phase 3: standup
         case 'standup':

@@ -395,7 +395,8 @@ export class SprintHubPanel {
       this._post({ type: 'linkedIssuePRs', prs });
       return prs;
     } catch {
-      return []; // best-effort — Dashboard shows no linked PRs, conflict check still runs
+      this._post({ type: 'linkedIssuePRs', prs: [] });
+      return [];
     }
   }
 
