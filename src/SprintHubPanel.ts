@@ -286,14 +286,16 @@ export class SprintHubPanel {
       this._context.globalState.update(cacheKey, data).then(undefined, (err: unknown) => {
         console.error('SprintHub: cache write failed', err);
       });
-      // Fetch linked PRs first, then run conflict check with the enriched dataset.
-      // Running conflicts on data.linkedIssuePRs=[] would miss linked-PR conflicts.
+      // Signal that the main board data is ready — the webview can render now.
+      // Linked PRs and conflict checks run in the background and push updates
+      // incrementally via linkedIssuePRs / conflictThreats messages.
+      this._post({ type: 'dataComplete' });
       void (async () => {
         try {
           const linkedPRs = await this._fetchLinkedPRsBackground(data.groups);
           await this._checkConflicts({ ...data, linkedIssuePRs: linkedPRs });
-        } finally {
-          this._post({ type: 'dataComplete' });
+        } catch {
+          // best-effort — linked PRs and conflict checks are non-blocking
         }
       })();
     } catch (err: unknown) {
