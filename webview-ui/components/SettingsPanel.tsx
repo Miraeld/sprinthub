@@ -1,5 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { RunwayConfig } from '../../src/types';
+import { RunwayConfig, ThemePreset, THEME_PRESETS } from '../../src/types';
+
+/**
+ * Swatch colours for the preset picker, keyed by preset. Each pair is that
+ * preset's own light/dark accent taken verbatim from theme.css — the dot has
+ * to show the preset it *offers*, not the one currently active, so it can't
+ * read var(--accent). Rendered as a small two-tone gradient so a single dot
+ * previews both modes.
+ */
+const PRESET_SWATCHES: Record<ThemePreset, { light: string; dark: string; label: string }> = {
+  gold:     { light: '#FED23A', dark: '#FED23A', label: 'Gold' },
+  sage:     { light: '#42734F', dark: '#99BD9E', label: 'Sage' },
+  lavender: { light: '#635C8C', dark: '#B0A6D6', label: 'Lavender' },
+  slate:    { light: '#3D6488', dark: '#8FB4D4', label: 'Slate' },
+  tide:     { light: '#2E7268', dark: '#85BEB2', label: 'Tide' },
+  clay:     { light: '#A15D48', dark: '#D29D88', label: 'Clay' },
+  rose:     { light: '#9C5A6C', dark: '#D0A0AC', label: 'Rose' },
+};
 
 interface OwnerOption { login: string; ownerType: 'organization' | 'user' }
 interface ProjectOption { number: number; title: string }
@@ -23,10 +40,33 @@ export function SettingsPanel({ config, onSave, onClose, owners, projects, onFet
   const [statusFieldName, setStatusFieldName] = useState(config.statusFieldName);
   const [refreshInterval, setRefreshInterval] = useState(String(config.refreshInterval));
   const [theme, setTheme] = useState<'dark' | 'light'>(config.theme ?? 'dark');
+  const [preset, setPreset] = useState<ThemePreset>(config.preset ?? 'gold');
   const [colorBlind, setColorBlind] = useState(config.colorBlind ?? false);
 
   // Fetch owners when the modal opens
   useEffect(() => { onFetchOwners(); }, []);
+
+  // Live-preview theme + accent while the modal is open, so picking a swatch
+  // repaints the whole board instead of waiting for Save. `saved` guards the
+  // revert: on Cancel (or Esc) we put the DOM back the way we found it, but
+  // after Save the committed config drives it and we must not stomp on that.
+  const saved = React.useRef(false);
+  // Snapshot the committed look once, at mount — the revert target must be
+  // what was saved when the modal opened, not whatever the previews left behind.
+  const original = React.useRef({ theme: config.theme ?? 'dark', preset: config.preset ?? 'gold' });
+
+  const applyLook = (t: 'dark' | 'light', p: ThemePreset) => {
+    const html = document.documentElement;
+    html.classList.toggle('dark', t !== 'light');
+    if (p === 'gold') html.removeAttribute('data-preset');
+    else html.setAttribute('data-preset', p);
+  };
+
+  useEffect(() => { applyLook(theme, preset); }, [theme, preset]);
+
+  useEffect(() => () => {
+    if (!saved.current) applyLook(original.current.theme, original.current.preset);
+  }, []);
 
   // When owners load and current owner matches one, fetch its projects
   useEffect(() => {
@@ -47,6 +87,7 @@ export function SettingsPanel({ config, onSave, onClose, owners, projects, onFet
   };
 
   const handleSave = () => {
+    saved.current = true;
     onSave({
       owner: owner.trim(),
       projectNumber: parseInt(projectNumber, 10) || 0,
@@ -55,6 +96,7 @@ export function SettingsPanel({ config, onSave, onClose, owners, projects, onFet
       refreshInterval: parseInt(refreshInterval, 10) || 5,
       liquidGlass: true,
       theme,
+      preset,
       colorBlind,
     });
     onClose();
@@ -91,25 +133,27 @@ export function SettingsPanel({ config, onSave, onClose, owners, projects, onFet
               {ownersLoading && <span className="settings-loading-dot" />}
             </label>
             {owners && owners.length > 0 ? (
-              <select
-                className="settings-select"
-                value={owner}
-                onChange={(e) => {
-                  const selected = owners.find((o) => o.login === e.target.value);
-                  if (selected) handleOwnerSelect(selected.login, selected.ownerType);
-                  else setOwner(e.target.value);
-                }}
-              >
-                {!owners.some((o) => o.login === owner) && owner && (
-                  <option value={owner}>{owner}</option>
-                )}
-                {owners.map((o) => (
-                  <option key={o.login} value={o.login}>
-                    {o.ownerType === 'organization' ? '⬡ ' : '◎ '}{o.login}
-                    {o.ownerType === 'organization' ? ' (org)' : ' (you)'}
-                  </option>
-                ))}
-              </select>
+              <div className="settings-select-wrap">
+                <select
+                  className="settings-select"
+                  value={owner}
+                  onChange={(e) => {
+                    const selected = owners.find((o) => o.login === e.target.value);
+                    if (selected) handleOwnerSelect(selected.login, selected.ownerType);
+                    else setOwner(e.target.value);
+                  }}
+                >
+                  {!owners.some((o) => o.login === owner) && owner && (
+                    <option value={owner}>{owner}</option>
+                  )}
+                  {owners.map((o) => (
+                    <option key={o.login} value={o.login}>
+                      {o.ownerType === 'organization' ? '⬡ ' : '◎ '}{o.login}
+                      {o.ownerType === 'organization' ? ' (org)' : ' (you)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
             ) : (
               <div className="settings-input-row">
                 <input
@@ -146,18 +190,20 @@ export function SettingsPanel({ config, onSave, onClose, owners, projects, onFet
               {projectsLoading && <span className="settings-loading-dot" />}
             </label>
             {projects && projects.length > 0 ? (
-              <select
-                className="settings-select"
-                value={projectNumber}
-                onChange={(e) => handleProjectSelect(e.target.value)}
-              >
-                <option value="">— pick a project —</option>
-                {projects.map((p) => (
-                  <option key={p.number} value={String(p.number)}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
+              <div className="settings-select-wrap">
+                <select
+                  className="settings-select"
+                  value={projectNumber}
+                  onChange={(e) => handleProjectSelect(e.target.value)}
+                >
+                  <option value="">— pick a project —</option>
+                  {projects.map((p) => (
+                    <option key={p.number} value={String(p.number)}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
             ) : (
               <>
                 <input
@@ -220,6 +266,34 @@ export function SettingsPanel({ config, onSave, onClose, owners, projects, onFet
                 Light
               </button>
             </div>
+          </div>
+
+          <div className="settings-field">
+            <label className="settings-label">Accent</label>
+            <div className="preset-grid" role="radiogroup" aria-label="Accent preset">
+              {THEME_PRESETS.map((p) => {
+                const sw = PRESET_SWATCHES[p];
+                return (
+                  <button
+                    key={p}
+                    role="radio"
+                    aria-checked={preset === p}
+                    className={`preset-swatch${preset === p ? ' active' : ''}`}
+                    onClick={() => setPreset(p)}
+                    title={`${sw.label} — light ${sw.light}, dark ${sw.dark}`}
+                  >
+                    <span
+                      className="preset-dot"
+                      style={{ background: `linear-gradient(135deg, ${sw.light} 0 50%, ${sw.dark} 50% 100%)` }}
+                    />
+                    <span className="preset-name">{sw.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <span className="settings-hint">
+              Each accent has its own <em>light</em> and <em>dark</em> palette — it combines with the theme above.
+            </span>
           </div>
 
           <div className="settings-field settings-field-row">

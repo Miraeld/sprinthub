@@ -17,7 +17,7 @@ import {
   fetchSettingsOwners,
   fetchSettingsProjects,
 } from './githubService';
-import { BoardItem, ConflictThreat, ExtensionMessage, LinkedPR, RunwayConfig, RunwayData, WebviewMessage } from './types';
+import { BoardItem, ConflictThreat, ExtensionMessage, LinkedPR, RunwayConfig, RunwayData, ThemePreset, WebviewMessage } from './types';
 
 const exec = util.promisify(cp.exec);
 
@@ -178,7 +178,7 @@ export class SprintHubPanel {
         if (e.affectsConfiguration('sprinthub')) {
           this._sendConfig();
           // Only reload data when a field that affects the API query changes.
-          // Cosmetic fields (liquidGlass, theme, colorBlind) and refreshInterval
+          // Cosmetic fields (liquidGlass, theme, preset, colorBlind) and refreshInterval
           // must not trigger a full board re-fetch.
           const dataFields = ['owner', 'projectNumber', 'ownerType', 'statusFieldName'];
           if (dataFields.some((f) => e.affectsConfiguration(`sprinthub.${f}`))) {
@@ -206,6 +206,7 @@ export class SprintHubPanel {
       refreshInterval: config.get<number>('refreshInterval', 5),
       liquidGlass: config.get<boolean>('liquidGlass', true),
       theme: config.get<string>('theme', 'dark') as 'dark' | 'light',
+      preset: config.get<string>('preset', 'gold') as ThemePreset,
       colorBlind: config.get<boolean>('colorBlind', false),
     };
     this._post({ type: 'config', payload });
@@ -221,6 +222,7 @@ export class SprintHubPanel {
       config.update('refreshInterval', cfg.refreshInterval, vscode.ConfigurationTarget.Global),
       config.update('liquidGlass', cfg.liquidGlass, vscode.ConfigurationTarget.Global),
       config.update('theme', cfg.theme, vscode.ConfigurationTarget.Global),
+      config.update('preset', cfg.preset, vscode.ConfigurationTarget.Global),
       config.update('colorBlind', cfg.colorBlind, vscode.ConfigurationTarget.Global),
     ]);
   }
