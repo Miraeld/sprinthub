@@ -2,7 +2,7 @@
   "name": "sprinthub",
   "displayName": "SprintHub",
   "description": "GitHub Projects v2 dashboard inside VS Code — sprint board, PR status, CI checks, and team hub",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "publisher": "miraeld",
   "icon": "resources/sprinthub-icon.png",
   "repository": {
@@ -115,6 +115,29 @@
           ],
           "default": "dark",
           "description": "UI theme: dark or light"
+        },
+        "sprinthub.preset": {
+          "type": "string",
+          "enum": [
+            "gold",
+            "sage",
+            "lavender",
+            "slate",
+            "tide",
+            "clay",
+            "rose"
+          ],
+          "enumDescriptions": [
+            "Podium Gold — warm gold on deep navy (default)",
+            "Quiet Sage — muted green over graphite",
+            "Dusk Lavender — twilight violet over graphite",
+            "Harbor Slate — cool blue-graphite",
+            "Muted Tide — soft spa-teal",
+            "Warm Clay — earthy terracotta",
+            "Dusty Rose — soft mauve"
+          ],
+          "default": "gold",
+          "description": "Accent preset. Combines with the light/dark theme — each preset has both a light and a dark palette."
         },
         "sprinthub.colorBlind": {
           "type": "boolean",

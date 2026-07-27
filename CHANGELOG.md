@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-28
+
+### Added
+- **Theme presets** — Seven accent presets ported from Podium: Gold (default), Sage, Lavender, Slate, Tide, Clay, and Rose. Each has its own light *and* dark palette, so combined with the existing theme toggle there are 14 looks. Pick one from the new Accent swatch grid in Project Settings — it previews live as you click and reverts if you cancel. Persisted as `sprinthub.preset`.
+
+### Changed
+- **Theming rewritten on CSS custom properties** — `webview-ui/theme.css` now defines the full token set (surfaces, text, borders, accent voice, glass chrome), and the stylesheet reads only tokens. Light mode is a different set of token values rather than a parallel stylesheet: the 261 `.light-theme` override rules and 277 `!important` declarations they needed are gone, along with all 655 hardcoded hex colors. Adding or adjusting a theme is now a token edit, not a sweep through the rules.
+- **Default dark accent is now Podium Gold** rather than the previous blue (`#89b4fa`). Choose the Slate preset for the closest match to the old look.
+- **Color-blind mode** is now two token overrides instead of twenty `!important` rules, and composes with every preset.
+
+### Fixed
+- **Primary button under liquid glass** — "Save & Reload" and "Standup" lost their accent fill because the `.liquid-glass .btn` rule outranked `.btn-primary`. The same specificity conflict was flattening hover and focus states across buttons, inputs, dropdown items, and column headers.
+- **Status colors stay semantic across presets** — CI, review, and diff colors are deliberately not preset-scoped, so a failing check reads as a failure in all seven accents.
+
 ## [1.1.0] - 2026-05-15
 
 ### Added
