@@ -506,19 +506,36 @@ export function App() {
   // Apply visual mode classes on both body and #root.
   // body → needed for body-level background/color overrides.
   // #root → needed for position:fixed overlay descendants (detail panel, settings modal).
+  //
+  // Theming has two orthogonal axes (see webview-ui/theme.css):
+  //   `.dark`      — light/dark structure tokens. Dark is SprintHub's default.
+  //   data-preset  — the accent "voice". Set on <html> so a single attribute
+  //                  covers body, #root, and every fixed-position overlay.
+  //                  "gold" is the default and clears the attribute rather
+  //                  than setting data-preset="gold", matching Podium.
   useEffect(() => {
     const root = document.getElementById('root');
     if (!root) return;
-    const isLight = config?.theme === 'light';
-    const isColorBlind = config?.colorBlind ?? false;
+    const html = document.documentElement;
+    const isDark = config?.theme !== 'light';
+
+    // `.dark` and `.color-blind` go on <html> ONLY. They are pure token
+    // overrides, and every token is inherited — putting `.dark` on <body> too
+    // would re-match the base `.dark` block there and shadow the more specific
+    // `[data-preset="x"].dark` tokens set on <html>, silently killing presets.
+    html.classList.toggle('dark', isDark);
+    html.classList.toggle('color-blind', config?.colorBlind ?? false);
+
+    const preset = config?.preset ?? 'gold';
+    if (preset === 'gold') html.removeAttribute('data-preset');
+    else html.setAttribute('data-preset', preset);
+
     // Liquid Glass is always on — the toggle is removed from the settings UI.
+    // This one IS a structural class: `body.liquid-glass` / `#root.liquid-glass`
+    // and the `.liquid-glass .foo` descendant rules need it on both.
     root.classList.add('liquid-glass');
-    root.classList.toggle('light-theme', isLight);
-    root.classList.toggle('color-blind', isColorBlind);
     document.body.classList.add('liquid-glass');
-    document.body.classList.toggle('light-theme', isLight);
-    document.body.classList.toggle('color-blind', isColorBlind);
-  }, [config?.theme, config?.colorBlind]);
+  }, [config?.theme, config?.preset, config?.colorBlind]);
 
   const filteredGroups = useMemo((): Record<string, BoardItem[]> => {
     if (!data) return {};
@@ -940,19 +957,23 @@ export function App() {
       {data && data.sprints.length > 0 && (
         <div className="sprint-bar">
           <span className="sprint-label">Sprint</span>
-          <select
-            className="sprint-select"
-            value={sprintFilter ?? ''}
-            onChange={(e) => {
-              sprintNeedsAutoSelect.current = false;
-              setSprintFilter(e.target.value || null);
-            }}
-          >
-            <option value="">All sprints</option>
-            {data.sprints.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          {/* Wrapper draws the dropdown chevron via a CSS mask so it takes a
+              theme token colour — a data: URI would bake one stroke colour in. */}
+          <div className="sprint-select-wrap">
+            <select
+              className="sprint-select"
+              value={sprintFilter ?? ''}
+              onChange={(e) => {
+                sprintNeedsAutoSelect.current = false;
+                setSprintFilter(e.target.value || null);
+              }}
+            >
+              <option value="">All sprints</option>
+              {data.sprints.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
           {sprintFilter && (
             <span className="sprint-active-badge">
               {sprintFilter}
@@ -1242,7 +1263,7 @@ export function App() {
       {/* Settings panel */}
       {settingsOpen && (
         <SettingsPanel
-          config={config ?? { owner: '', projectNumber: 0, ownerType: 'organization', statusFieldName: 'Status', refreshInterval: 5, liquidGlass: true, theme: 'dark', colorBlind: false }}
+          config={config ?? { owner: '', projectNumber: 0, ownerType: 'organization', statusFieldName: 'Status', refreshInterval: 5, liquidGlass: true, theme: 'dark', preset: 'gold', colorBlind: false }}
           onSave={handleSaveConfig}
           onClose={() => { setSettingsOpen(false); setSettingsOwners(null); setSettingsProjects(null); }}
           owners={settingsOwners}

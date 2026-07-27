@@ -89,6 +89,31 @@ export interface RunwayData {
   rateLimit?: RateLimit;
 }
 
+/**
+ * Accent preset, ported from Podium. Orthogonal to `theme` — each preset has
+ * both a light and a dark palette, so the two fields combine into 14 looks.
+ * "gold" is the default and is expressed by the absence of `data-preset`.
+ * See webview-ui/theme.css.
+ */
+export type ThemePreset =
+  | 'gold'
+  | 'sage'
+  | 'lavender'
+  | 'slate'
+  | 'tide'
+  | 'clay'
+  | 'rose';
+
+export const THEME_PRESETS: ThemePreset[] = [
+  'gold',
+  'sage',
+  'lavender',
+  'slate',
+  'tide',
+  'clay',
+  'rose',
+];
+
 export interface RunwayConfig {
   owner: string;
   projectNumber: number;
@@ -97,6 +122,7 @@ export interface RunwayConfig {
   refreshInterval: number;
   liquidGlass: boolean;
   theme: 'dark' | 'light';
+  preset: ThemePreset;
   colorBlind: boolean;
 }
 
